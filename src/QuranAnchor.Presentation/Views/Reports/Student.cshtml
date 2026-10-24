@@ -1,0 +1,98 @@
+@model ReportData
+@inject QuranAnchor.Application.Abstractions.ISettingsService Settings
+@{
+    ViewData["Title"] = "Monthly report";
+    var student = (StudentProfile)ViewBag.Student;
+    var remarks = (MonthlyReport)ViewBag.Remarks;
+    bool canWrite = ViewBag.CanWrite;
+    var rules = await Settings.GetSystemAsync();
+    var prev = new DateOnly(Model.Year, Model.Month, 1).AddMonths(-1);
+    var next = new DateOnly(Model.Year, Model.Month, 1).AddMonths(1);
+    string Level(double? v) => v is null ? "" : v >= rules.StrongThresholdPercent ? "Strong" : v >= rules.GoodThresholdPercent ? "Good" : "Developing";
+}
+@functions {
+    static string BarRow(string label, double? value)
+    {
+        if (value is null) return "";
+        var pct = Math.Clamp(value.Value, 0, 100);
+        return $"<div class=\"bar-row\"><span>{System.Net.WebUtility.HtmlEncode(label)}</span><div class=\"meter\"><span style=\"width:{pct:0}%\"></span></div><strong class=\"text-end\">{pct:0}%</strong></div>";
+    }
+}
+
+<header class="page-head">
+    <h1>Monthly report: @Fmt.Month(Model.Year, Model.Month)</h1>
+    <p class="page-sub">@Model.StudentName (@Model.StudentCode) · @Model.Level · Tutor: @Model.TutorName · <span class="badge-status s-@remarks.Status.ToString().ToLower()">@remarks.Status</span></p>
+</header>
+
+<div class="d-flex flex-wrap gap-2 section no-print">
+    <a class="btn btn-outline-secondary" asp-route-studentId="@Model.StudentId" asp-route-year="@prev.Year" asp-route-month="@prev.Month">Previous month</a>
+    <a class="btn btn-outline-secondary" asp-route-studentId="@Model.StudentId" asp-route-year="@next.Year" asp-route-month="@next.Month">Next month</a>
+    <a class="btn btn-primary" asp-action="Pdf" asp-route-studentId="@Model.StudentId" asp-route-year="@Model.Year" asp-route-month="@Model.Month"><i class="bi bi-download" aria-hidden="true"></i> Download PDF</a>
+</div>
+
+@if (Model.PackageTotal == 0) { <p class="empty-note">There are no classes for this month.</p> }
+else
+{
+    <div class="row g-3 section">
+        <div class="col-md-4"><div class="panel h-100"><div class="small-label">Overall</div><p class="h4 mb-0">@Model.Classification</p><p class="muted mb-0">@Fmt.Pct(Model.Overall)</p></div></div>
+        <div class="col-md-4"><div class="panel h-100"><div class="small-label">Sessions held</div><p class="h4 mb-0">@Model.SessionsHeld of @Model.PackageTotal</p><p class="muted mb-0">@(Model.CarriedIn > 0 ? $"{Model.PackageTotal - Model.CarriedIn} + {Model.CarriedIn} carried over" : "")</p></div></div>
+        <div class="col-md-4"><div class="panel h-100"><div class="small-label">Goals</div><p class="mb-0"><span class="goal-yes">@Model.GoalYes yes</span> · <span class="goal-partially">@Model.GoalPartial partly</span> · <span class="goal-no">@Model.GoalNo no</span></p></div></div>
+    </div>
+
+    <section class="section"><h2>At a glance</h2>
+        <div class="panel">
+            @Html.Raw(BarRow("Class delivery", Model.ClassDeliveryRate))
+            @Html.Raw(BarRow("Student attendance", Model.AttendanceRate))
+            @Html.Raw(BarRow("Student punctuality", Model.PunctualityRate))
+            @Html.Raw(BarRow("On track with lessons", Model.OnTrackRate))
+            @Html.Raw(BarRow("Assignment completion", Model.AssignmentRate))
+            @Html.Raw(BarRow("Daily task compliance", Model.DailyTaskRate))
+            @Html.Raw(BarRow("Goal achievement", Model.GoalRate))
+        </div>
+    </section>
+
+    <section class="section"><h2>Session record</h2>
+        <div class="table-card table-responsive"><table class="table"><thead><tr><th>Date</th><th>Status</th><th>Lesson</th><th>Goal</th></tr></thead><tbody>
+        @foreach (var l in Model.Lines) { <tr><td class="text-nowrap">@l.LocalStart.ToString("ddd d MMM")</td><td>@l.Status</td><td>@l.Lesson</td><td>@l.Goal</td></tr> }
+        </tbody></table></div>
+    </section>
+
+    @if (Model.Topics.Count > 0) { <section class="section"><h2>Topics covered</h2><div class="panel"><ul class="mb-0">@foreach (var t in Model.Topics) { <li>@t</li> }</ul></div></section> }
+
+    <section class="section"><h2>Learning environment</h2>
+        <div class="panel">Student camera off in @Model.StudentCameraOff class(es) · student network issues in @Model.StudentNetworkIssues · teacher network issues in @Model.TeacherNetworkIssues · environment not conducive in @Model.EnvironmentIssues.</div>
+    </section>
+
+    <section class="section"><h2>Class delivery scorecard</h2>
+        <div class="panel">
+            @Html.Raw(BarRow("Lesson delivery " + Level(Model.LessonDeliveryRate), Model.LessonDeliveryRate))
+            @Html.Raw(BarRow("Resource usage " + Level(Model.ResourceUsageRate), Model.ResourceUsageRate))
+            @Html.Raw(BarRow("Student engagement " + Level(Model.EngagementRate), Model.EngagementRate))
+            @Html.Raw(BarRow("Feedback quality " + Level(Model.FeedbackQualityRate), Model.FeedbackQualityRate))
+        </div>
+    </section>
+}
+
+@if (canWrite)
+{
+    <section class="section no-print">
+        <h2>Your part of the report</h2>
+        <form asp-action="Save" method="post" class="panel">
+            <input type="hidden" name="StudentId" value="@Model.StudentId" /><input type="hidden" name="Year" value="@Model.Year" /><input type="hidden" name="Month" value="@Model.Month" />
+            <div class="mb-3"><label class="form-label" for="FocusNextMonth">Focus for next month</label><textarea class="form-control" id="FocusNextMonth" name="FocusNextMonth" rows="3">@remarks.FocusNextMonth</textarea></div>
+            <div class="mb-3"><label class="form-label" for="TutorRemark">Closing remark</label><textarea class="form-control" id="TutorRemark" name="TutorRemark" rows="3">@remarks.TutorRemark</textarea></div>
+            <div class="mb-3"><label class="form-label" for="ParentNote">A note for parents</label><textarea class="form-control" id="ParentNote" name="ParentNote" rows="3">@remarks.ParentNote</textarea></div>
+            <button class="btn btn-primary" type="submit">Save draft</button>
+        </form>
+        @if (remarks.Status == PublishStatus.Draft)
+        {
+            <form asp-action="Publish" method="post" class="mt-3"><input type="hidden" name="studentId" value="@Model.StudentId" /><input type="hidden" name="year" value="@Model.Year" /><input type="hidden" name="month" value="@Model.Month" /><button class="btn btn-outline-secondary">Publish report</button> <span class="muted">Save first. Publishing lets the parent see and download it.</span></form>
+        }
+    </section>
+}
+else
+{
+    @if (!string.IsNullOrWhiteSpace(remarks.FocusNextMonth)) { <section class="section"><h2>Focus for next month</h2><div class="panel">@remarks.FocusNextMonth</div></section> }
+    @if (!string.IsNullOrWhiteSpace(remarks.TutorRemark)) { <section class="section"><h2>Tutor's closing remark</h2><div class="panel">@remarks.TutorRemark</div></section> }
+    @if (!string.IsNullOrWhiteSpace(remarks.ParentNote)) { <section class="section"><h2>A note for parents</h2><div class="panel">@remarks.ParentNote</div></section> }
+}

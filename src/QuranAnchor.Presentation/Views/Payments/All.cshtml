@@ -1,0 +1,17 @@
+@model List<Payment>
+@{ ViewData["Title"] = "Payments"; }
+<header class="page-head"><h1>Payments</h1><p class="page-sub">The 150 most recent portal fee payments.</p></header>
+<div class="table-card table-responsive"><table class="table align-middle">
+    <thead><tr><th>Date</th><th>Student</th><th>Amount</th><th>Status</th><th>Type</th><th>Reference</th></tr></thead>
+    <tbody>
+    @foreach (var p in Model)
+    {
+        <tr><td class="text-nowrap">@p.CreatedAtUtc.ToString("d MMM yyyy HH:mm")</td>
+            <td><a asp-controller="Students" asp-action="Details" asp-route-id="@p.StudentId">@p.Student?.FullName</a></td>
+            <td>@Fmt.Money(p.Currency, p.Amount)</td>
+            <td><span class="badge-status s-@p.Status.ToString().ToLower()">@p.Status</span></td>
+            <td>@(p.IsManual ? "Manual" : "Paystack")@(string.IsNullOrEmpty(p.Note) ? "" : " · " + p.Note)</td>
+            <td class="muted">@p.Reference</td></tr>
+    }
+    </tbody>
+</table></div>

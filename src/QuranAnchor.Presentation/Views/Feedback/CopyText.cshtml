@@ -1,0 +1,15 @@
+@model string
+@{ ViewData["Title"] = "Copy feedback"; }
+<header class="page-head"><h1>Feedback as a WhatsApp message</h1><p class="page-sub">Copy this and paste it into the class group.</p></header>
+<div class="mono-box mb-3" id="wa-text">@Model</div>
+<button type="button" class="btn btn-primary" id="copy-btn">Copy message</button>
+<a class="btn btn-link" asp-controller="Sessions" asp-action="Details" asp-route-id="@ViewBag.SessionId">Back to the class</a>
+@section Scripts {
+    <script>
+        document.getElementById('copy-btn').addEventListener('click', async function () {
+            var text = document.getElementById('wa-text').innerText;
+            try { await navigator.clipboard.writeText(text); this.textContent = 'Copied'; }
+            catch (e) { var range = document.createRange(); range.selectNodeContents(document.getElementById('wa-text')); var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range); this.textContent = 'Selected: press Ctrl+C'; }
+        });
+    </script>
+}

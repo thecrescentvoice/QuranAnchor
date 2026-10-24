@@ -1,0 +1,112 @@
+@using QuranAnchor.Application.Security
+@inject QuranAnchor.Application.Abstractions.ISettingsService Settings
+@{
+    var b = await Settings.GetBrandingAsync();
+    var signedIn = User.Identity?.IsAuthenticated == true;
+    var role = Roles.All.FirstOrDefault(User.IsInRole) ?? "";
+    bool Can(string permission) => signedIn && RolePermissions.Has(role, permission);
+    var fullName = User.FindFirst(AppClaimTypes.FullName)?.Value ?? User.Identity?.Name;
+    var setupPending = signedIn && (User.HasClaim(AppClaimTypes.MustChangePassword, "1") || User.HasClaim(AppClaimTypes.TwoFactorRequired, "1") || User.HasClaim(AppClaimTypes.ConsentRequired, "1"));
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <partial name="_Head" model="b" />
+</head>
+<body>
+    <div class="brand-strip" aria-hidden="true"></div>
+
+    <nav class="app-nav">
+        <div class="container d-flex align-items-center justify-content-between">
+            <a class="brand" asp-controller="Home" asp-action="Index">
+                @if (!string.IsNullOrEmpty(b.LogoPath))
+                {
+                    <img src="@b.LogoPath" alt="" class="brand-logo" />
+                }
+                else
+                {
+                    <span class="mark">@b.IdPrefix<span class="dot">.</span></span>
+                }
+                <span class="brand-name">@b.AcademyName</span>
+            </a>
+
+            @if (signedIn)
+            {
+                <div class="dropdown">
+                    <button class="btn btn-account dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-person-circle" aria-hidden="true"></i>
+                        <span class="d-none d-sm-inline">@fullName</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" asp-controller="Account" asp-action="ChangePassword">Change password</a></li>
+                        <li>
+                            <form asp-controller="Account" asp-action="Logout" method="post">
+                                <button type="submit" class="dropdown-item">Sign out</button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+            }
+        </div>
+    </nav>
+
+    @if (signedIn && !setupPending)
+    {
+        <div class="subnav" role="navigation" aria-label="Main">
+            <div class="container subnav-inner">
+                <a asp-controller="Home" asp-action="Index">Dashboard</a>
+                @if (role == Roles.Student)
+                {
+                    <a asp-controller="Sessions" asp-action="Index">Classes</a>
+                    <a asp-controller="Plans" asp-action="Index">Plans</a>
+                    <a asp-controller="Reports" asp-action="Mine">Reports</a>
+                    <a asp-controller="Payments" asp-action="Index">Portal fee</a>
+                }
+                else if (role == Roles.Tutor)
+                {
+                    <a asp-controller="Sessions" asp-action="Index">Classes</a>
+                    <a asp-controller="Students" asp-action="Index">My students</a>
+                    <a asp-controller="Plans" asp-action="Index">Plans</a>
+                    <a asp-controller="Earnings" asp-action="Mine">Earnings</a>
+                }
+                else
+                {
+                    <a asp-controller="Students" asp-action="Index">Students</a>
+                    <a asp-controller="Tutors" asp-action="Index">Tutors</a>
+                    <a asp-controller="Sessions" asp-action="Index">Classes</a>
+                    <a asp-controller="Plans" asp-action="Index">Plans</a>
+                    @if (Can(Permissions.ViewPayments)) { <a asp-controller="Payments" asp-action="All">Payments</a> }
+                    @if (Can(Permissions.ViewAllEarnings)) { <a asp-controller="Earnings" asp-action="Summary">Tutor summary</a> }
+                    @if (Can(Permissions.ManageBreakDays)) { <a asp-controller="BreakDays" asp-action="Index">Break days</a> }
+                    @if (Can(Permissions.ManageStaff)) { <a asp-controller="Staff" asp-action="Index">Staff</a> }
+                    @if (Can(Permissions.EditPricing)) { <a asp-controller="Pricing" asp-action="Index">Pricing</a> }
+                    @if (Can(Permissions.EditSystemSettings)) { <a asp-controller="Rules" asp-action="Index">Rules</a> }
+                    @if (Can(Permissions.EditBranding)) { <a asp-controller="Settings" asp-action="Branding">Branding</a> }
+                    @if (Can(Permissions.ViewAuditLog)) { <a asp-controller="AuditLog" asp-action="Index">Audit log</a> }
+                }
+                <a asp-controller="Announcements" asp-action="Index">Announcements</a>
+            </div>
+        </div>
+    }
+
+    <main class="container app-main">
+        @if (TempData["Saved"] is string saved)
+        {
+            <div class="alert alert-success" role="status">@saved</div>
+        }
+        @if (TempData["Warning"] is string warning)
+        {
+            <div class="alert alert-warning" role="alert">@warning</div>
+        }
+        @RenderBody()
+    </main>
+
+    <footer class="container app-footer">
+        <span>&copy; @DateTime.UtcNow.Year @b.AcademyName</span>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,30 @@
+@model TwoFactorSetupViewModel
+@{ Layout = "_AuthLayout"; ViewData["Title"] = "Two-step verification"; }
+@if (Model.Enabled)
+{
+    <h1 class="auth-title">Two-step verification is on</h1>
+    <p class="auth-sub">You will need a code from your authenticator app each time you sign in.</p>
+    <a asp-controller="Home" asp-action="Index" class="btn btn-primary btn-lg w-100">Continue</a>
+}
+else
+{
+    <h1 class="auth-title">Set up two-step verification</h1>
+    <p class="auth-sub">Admin accounts need this. It protects student data and payments.</p>
+    @if (TempData["Warning"] is string warning) { <div class="alert alert-warning" role="alert">@warning</div> }
+    <ol class="ps-3">
+        <li class="mb-2">Install an authenticator app (Google Authenticator, Microsoft Authenticator or similar).</li>
+        <li class="mb-2">Scan this code, or choose to enter a key and type: <span class="temp-pass d-block" style="font-size:1rem">@Model.Key</span></li>
+    </ol>
+    <div id="qr" class="d-flex justify-content-center my-3"></div>
+    <form asp-action="TwoFactorSetup" method="post" novalidate>
+        <div class="mb-4"><label asp-for="Code" class="form-label"></label><input asp-for="Code" class="form-control form-control-lg" inputmode="numeric" autocomplete="one-time-code" /></div>
+        <button type="submit" class="btn btn-primary btn-lg w-100">Turn on</button>
+    </form>
+    <div class="auth-links">
+        <form asp-action="Logout" method="post" class="d-inline"><button type="submit" class="btn btn-link p-0">Sign out</button></form>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script>
+        new QRCode(document.getElementById('qr'), { text: '@Html.Raw(Model.Uri)', width: 180, height: 180 });
+    </script>
+}

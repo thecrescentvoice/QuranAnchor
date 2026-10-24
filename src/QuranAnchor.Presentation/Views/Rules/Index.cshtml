@@ -1,0 +1,44 @@
+@model RulesViewModel
+@{ ViewData["Title"] = "Rules"; }
+<header class="page-head"><h1>Rules and timings</h1><p class="page-sub">Changes apply straight away.</p></header>
+<form asp-action="Index" method="post" novalidate>
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+    <fieldset class="section"><legend class="h5">Portal fee</legend>
+        <div class="form-grid">
+            <div><label asp-for="GracePeriodDays" class="form-label"></label><input asp-for="GracePeriodDays" type="number" class="form-control" /></div>
+            <div><label asp-for="FeeReminderDaysBefore" class="form-label"></label><input asp-for="FeeReminderDaysBefore" type="number" class="form-control" /></div>
+        </div>
+    </fieldset>
+
+    <fieldset class="section"><legend class="h5">Classes</legend>
+        <div class="form-check mb-3"><input asp-for="UnexcusedAbsenceUsesSession" class="form-check-input" /><label asp-for="UnexcusedAbsenceUsesSession" class="form-check-label"></label></div>
+        <div class="form-grid">
+            <div><label asp-for="NoShowWaitMinutes" class="form-label"></label><input asp-for="NoShowWaitMinutes" type="number" class="form-control" /></div>
+            <div><label asp-for="JoinOpensMinutesBefore" class="form-label"></label><input asp-for="JoinOpensMinutesBefore" type="number" class="form-control" /></div>
+        </div>
+    </fieldset>
+
+    <fieldset class="section"><legend class="h5">Reminders and alerts</legend>
+        <div class="form-grid">
+            <div><label asp-for="ParentReminderMinutes" class="form-label"></label><input asp-for="ParentReminderMinutes" type="number" class="form-control" /></div>
+            <div><label asp-for="TutorFeedbackReminderHours" class="form-label"></label><input asp-for="TutorFeedbackReminderHours" type="number" class="form-control" /></div>
+            <div><label asp-for="SupervisorAlertHours" class="form-label"></label><input asp-for="SupervisorAlertHours" type="number" class="form-control" /></div>
+        </div>
+    </fieldset>
+
+    <fieldset class="section"><legend class="h5">Report</legend>
+        <div class="form-grid">
+            <div><label asp-for="StrongThresholdPercent" class="form-label"></label><input asp-for="StrongThresholdPercent" type="number" class="form-control" /></div>
+            <div><label asp-for="GoodThresholdPercent" class="form-label"></label><input asp-for="GoodThresholdPercent" type="number" class="form-control" /><span asp-validation-for="GoodThresholdPercent" class="field-error"></span></div>
+            <div><label asp-for="MinFeedbackWords" class="form-label"></label><input asp-for="MinFeedbackWords" type="number" class="form-control" /></div>
+        </div>
+    </fieldset>
+
+    <fieldset class="section"><legend class="h5">Plan templates</legend>
+        <div class="mb-3"><label asp-for="PlanExpectationsTemplate" class="form-label"></label><textarea asp-for="PlanExpectationsTemplate" class="form-control" rows="4"></textarea><div class="form-text">One line per item.</div></div>
+        <div class="mb-3"><label asp-for="PlanParentNotesTemplate" class="form-label"></label><textarea asp-for="PlanParentNotesTemplate" class="form-control" rows="4"></textarea></div>
+    </fieldset>
+
+    <button class="btn btn-primary btn-lg" type="submit">Save rules</button>
+</form>

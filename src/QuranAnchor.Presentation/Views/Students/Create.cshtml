@@ -1,0 +1,8 @@
+@model StudentFormViewModel
+@{ ViewData["Title"] = "New student"; ViewData["IsEdit"] = false; }
+<header class="page-head"><h1>New student</h1><p class="page-sub">The parent gets the Student ID and a temporary password by email.</p></header>
+<form asp-action="Create" method="post" novalidate>
+    <partial name="_StudentForm" model="Model" />
+    <button type="submit" class="btn btn-primary btn-lg">Create student</button>
+    <a class="btn btn-link" asp-action="Index">Cancel</a>
+</form>

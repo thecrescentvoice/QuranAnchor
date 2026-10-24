@@ -1,0 +1,3 @@
+@{ ViewData["Title"] = "Monthly report"; var s = (StudentProfile)ViewBag.Student; }
+<header class="page-head"><h1>Monthly report: @Fmt.Month((int)ViewBag.Year, (int)ViewBag.Month)</h1></header>
+<p class="empty-note">This month's report has not been published yet. You will be able to see and download it here as soon as the tutor publishes it.</p>

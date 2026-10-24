@@ -1,0 +1,104 @@
+@model BrandingViewModel
+@{
+    ViewData["Title"] = "Branding";
+}
+
+<header class="page-head">
+    <h1>Branding</h1>
+    <p class="page-sub">These settings show on every page, email and PDF. Changes apply straight away.</p>
+</header>
+
+<form asp-action="Branding" method="post" enctype="multipart/form-data" novalidate class="settings-form">
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+    <fieldset>
+        <legend>Name</legend>
+        <div class="row g-3">
+            <div class="col-md-7">
+                <label asp-for="AcademyName" class="form-label"></label>
+                <input asp-for="AcademyName" class="form-control" />
+                <span asp-validation-for="AcademyName" class="field-error"></span>
+            </div>
+            <div class="col-md-5">
+                <label asp-for="ShortName" class="form-label"></label>
+                <input asp-for="ShortName" class="form-control" />
+                <span asp-validation-for="ShortName" class="field-error"></span>
+            </div>
+            <div class="col-12">
+                <label asp-for="Tagline" class="form-label"></label>
+                <input asp-for="Tagline" class="form-control" />
+                <span asp-validation-for="Tagline" class="field-error"></span>
+            </div>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Contact</legend>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="ContactEmail" class="form-label"></label>
+                <input asp-for="ContactEmail" class="form-control" type="email" />
+                <span asp-validation-for="ContactEmail" class="field-error"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="SupervisorWhatsApp" class="form-label"></label>
+                <input asp-for="SupervisorWhatsApp" class="form-control" inputmode="numeric" />
+                <div class="form-text">International format, digits only. Parents use this for the Report an issue button.</div>
+                <span asp-validation-for="SupervisorWhatsApp" class="field-error"></span>
+            </div>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Student and tutor IDs</legend>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label asp-for="IdPrefix" class="form-label"></label>
+                <input asp-for="IdPrefix" class="form-control" maxlength="6" autocapitalize="characters" />
+                <div class="form-text">New IDs look like @(Model.IdPrefix)-STU-0007. IDs that already exist never change.</div>
+                <span asp-validation-for="IdPrefix" class="field-error"></span>
+            </div>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Colours</legend>
+        <div class="row g-3">
+            <div class="col-6 col-md-3">
+                <label asp-for="PrimaryColor" class="form-label"></label>
+                <input asp-for="PrimaryColor" type="color" class="form-control form-control-color w-100" />
+                <span asp-validation-for="PrimaryColor" class="field-error"></span>
+            </div>
+            <div class="col-6 col-md-3">
+                <label asp-for="AccentColor" class="form-label"></label>
+                <input asp-for="AccentColor" type="color" class="form-control form-control-color w-100" />
+                <span asp-validation-for="AccentColor" class="field-error"></span>
+            </div>
+        </div>
+        <div class="form-text mt-2">The main colour is used for buttons and links. Green, amber and red stay reserved for Yes, Partially and No.</div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Logo</legend>
+        @if (!string.IsNullOrEmpty(Model.LogoPath))
+        {
+            <div class="logo-current">
+                <img src="@Model.LogoPath" alt="Current logo" />
+            </div>
+        }
+        <label asp-for="LogoFile" class="form-label"></label>
+        <input asp-for="LogoFile" type="file" class="form-control" accept=".png,.jpg,.jpeg,.webp" />
+        <div class="form-text">PNG, JPG or WebP, smaller than 1 MB. Until you add one, a text mark is shown.</div>
+        <span asp-validation-for="LogoFile" class="field-error"></span>
+
+        @if (!string.IsNullOrEmpty(Model.LogoPath))
+        {
+            <div class="form-check mt-3">
+                <input asp-for="RemoveLogo" class="form-check-input" />
+                <label asp-for="RemoveLogo" class="form-check-label"></label>
+            </div>
+        }
+    </fieldset>
+
+    <button type="submit" class="btn btn-primary btn-lg">Save branding</button>
+</form>

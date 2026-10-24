@@ -1,0 +1,31 @@
+@model PlanFormViewModel
+@{ ViewData["Title"] = "Monthly plan"; }
+<header class="page-head"><h1>Monthly plan: @Fmt.Month(Model.Year, Model.Month)</h1><p class="page-sub">@Model.StudentName · <span class="badge-status s-@Model.Status.ToString().ToLower()">@Model.Status</span></p></header>
+
+<form asp-action="Edit" method="post" novalidate>
+    <input type="hidden" asp-for="StudentId" /><input type="hidden" asp-for="Year" /><input type="hidden" asp-for="Month" />
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+    <div class="mb-3"><label asp-for="Goal" class="form-label"></label><input asp-for="Goal" class="form-control" /></div>
+    <div class="mb-3"><label asp-for="MonthGoals" class="form-label"></label><textarea asp-for="MonthGoals" class="form-control" rows="3"></textarea></div>
+    <div class="mb-3"><label asp-for="PostClassExpectations" class="form-label"></label><textarea asp-for="PostClassExpectations" class="form-control" rows="3"></textarea></div>
+    <div class="mb-3">
+        <label asp-for="RowsText" class="form-label"></label>
+        <textarea asp-for="RowsText" class="form-control" rows="6" placeholder="1-2 | Waqf signs | Practise stopping points | Surah Al-Mulk"></textarea>
+        <div class="form-text">Session numbers first (a single number or a range). Each row becomes the learning objective for those classes in the feedback form.</div>
+        <span asp-validation-for="RowsText" class="field-error"></span>
+    </div>
+    <div class="mb-3"><label asp-for="DailyTilawahFocus" class="form-label"></label><textarea asp-for="DailyTilawahFocus" class="form-control" rows="3"></textarea></div>
+    <div class="mb-3"><label asp-for="ClassFormat" class="form-label"></label><input asp-for="ClassFormat" class="form-control" /></div>
+    <div class="mb-4"><label asp-for="ParentNotes" class="form-label"></label><textarea asp-for="ParentNotes" class="form-control" rows="3"></textarea></div>
+
+    <button class="btn btn-primary btn-lg" type="submit">Save draft</button>
+    <a class="btn btn-link" asp-controller="Students" asp-action="Details" asp-route-id="@Model.StudentId">Back to the student</a>
+</form>
+
+@if (Model.Status == PublishStatus.Draft)
+{
+    <hr />
+    <p class="muted">Publishing makes the plan visible to the parent and available as a PDF. Save your changes first.</p>
+    <form asp-action="PublishFor" method="post"><input type="hidden" name="studentId" value="@Model.StudentId" /><input type="hidden" name="year" value="@Model.Year" /><input type="hidden" name="month" value="@Model.Month" /><button class="btn btn-outline-secondary">Publish this plan</button></form>
+}

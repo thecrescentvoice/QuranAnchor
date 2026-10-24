@@ -1,0 +1,28 @@
+@model MonthlyPlan
+@inject QuranAnchor.Presentation.Services.CurrentUser Me
+@{
+    ViewData["Title"] = "Monthly plan";
+    string[] Lines(string text) => (text ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+}
+<header class="page-head">
+    <h1>Monthly plan: @Fmt.Month(Model.Year, Model.Month)</h1>
+    <p class="page-sub">@Model.Student?.FullName · Tutor: @Model.Tutor?.FullName · <span class="badge-status s-@Model.Status.ToString().ToLower()">@Model.Status</span></p>
+</header>
+
+<div class="d-flex flex-wrap gap-2 section no-print">
+    <a class="btn btn-primary" asp-action="Pdf" asp-route-id="@Model.Id"><i class="bi bi-download" aria-hidden="true"></i> Download PDF</a>
+    @if (!Me.IsStudent) { <a class="btn btn-outline-secondary" asp-action="Edit" asp-route-studentId="@Model.StudentId" asp-route-year="@Model.Year" asp-route-month="@Model.Month">Edit</a> }
+    @if (!Me.IsStudent && Model.Status == PublishStatus.Draft) { <form asp-action="Publish" asp-route-id="@Model.Id" method="post"><button class="btn btn-outline-secondary">Publish</button></form> }
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.Goal)) { <div class="panel section"><div class="small-label">Goal for the month</div><p class="mb-0">@Model.Goal</p></div> }
+<section class="section"><h2>After every class, the student should</h2><div class="panel"><ul class="mb-0">@foreach (var l in Lines(Model.PostClassExpectations)) { <li>@l</li> }</ul></div></section>
+<section class="section"><h2>Goals for this month</h2><div class="panel"><ol class="mb-0">@foreach (var l in Lines(Model.MonthGoals)) { <li>@l</li> }</ol></div></section>
+<section class="section"><h2>Weekly plan</h2>
+    <div class="table-card table-responsive"><table class="table"><thead><tr><th>Sessions</th><th>Content</th><th>Activity</th><th>Muraja'ah</th></tr></thead><tbody>
+    @foreach (var r in Model.Rows.OrderBy(r => r.SessionFrom)) { <tr><td>@(r.SessionFrom == r.SessionTo ? r.SessionFrom.ToString() : $"{r.SessionFrom}–{r.SessionTo}")</td><td>@r.Content</td><td>@r.Activity</td><td>@r.Murajaah</td></tr> }
+    </tbody></table></div>
+</section>
+@if (Lines(Model.DailyTilawahFocus).Length > 0) { <section class="section"><h2>Daily tilawah focus</h2><div class="panel"><ul class="mb-0">@foreach (var l in Lines(Model.DailyTilawahFocus)) { <li>@l</li> }</ul></div></section> }
+@if (!string.IsNullOrWhiteSpace(Model.ClassFormat)) { <section class="section"><h2>Class format</h2><div class="panel">@Model.ClassFormat</div></section> }
+@if (Lines(Model.ParentNotes).Length > 0) { <section class="section"><h2>Notes for parents</h2><div class="panel"><ul class="mb-0">@foreach (var l in Lines(Model.ParentNotes)) { <li>@l</li> }</ul></div></section> }

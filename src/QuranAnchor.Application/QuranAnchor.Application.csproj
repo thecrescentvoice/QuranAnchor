@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\QuranAnchor.Domain\QuranAnchor.Domain.csproj" />
+  </ItemGroup>
+</Project>

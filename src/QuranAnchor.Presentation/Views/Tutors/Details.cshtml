@@ -1,0 +1,41 @@
+@model TutorProfile
+@inject QuranAnchor.Presentation.Services.CurrentUser Me
+@{
+    ViewData["Title"] = Model.FullName;
+    var students = (List<StudentProfile>)ViewBag.Students;
+    var summary = ViewBag.Summary as TutorSummary;
+    var checklist = (TempData["RotateChecklist"] as string ?? "").Split('|', StringSplitOptions.RemoveEmptyEntries);
+}
+<header class="page-head"><h1>@Model.FullName <span class="badge-status s-@Model.Status.ToString().ToLower()">@Model.Status</span></h1><p class="page-sub">@Model.TutorCode · @Model.Email · @Model.TimeZoneId</p></header>
+
+@if (checklist.Length > 0)
+{
+    <div class="banner banner-warn">
+        <strong>Next step: replace the Meet link</strong> for each of these students, so the previous tutor cannot join their class:
+        <ul class="mb-0 mt-2">@foreach (var item in checklist) { var parts = item.Split('~'); <li><a asp-controller="Students" asp-action="Details" asp-route-id="@parts[0]">@parts[1]</a></li> }</ul>
+    </div>
+}
+
+<div class="d-flex flex-wrap gap-2 section no-print">
+    @if (Model.Status == AccountStatus.Active)
+    {
+        @if (Me.Can(Permissions.ReplaceTutor)) { <a class="btn btn-outline-secondary" asp-action="Replace" asp-route-id="@Model.Id">Replace tutor</a> }
+        @if (Me.Can(Permissions.DeactivateAccounts)) { <form asp-action="Deactivate" asp-route-id="@Model.Id" method="post" onsubmit="return confirm('Deactivate this tutor? Their history is kept.');"><button class="btn btn-outline-secondary">Deactivate</button></form> }
+    }
+    else if (Me.Can(Permissions.ReactivateAccounts)) { <form asp-action="Reactivate" asp-route-id="@Model.Id" method="post"><button class="btn btn-outline-secondary">Reactivate</button></form> }
+    @if (Me.Can(Permissions.DeleteAccounts)) { <form asp-action="Delete" asp-route-id="@Model.Id" method="post" onsubmit="return confirm('Delete permanently? Only possible when the tutor has no class history.');"><button class="btn btn-outline-danger">Delete permanently</button></form> }
+</div>
+
+@if (summary is not null)
+{
+    <section class="section"><h2>This month</h2>
+        <div class="panel"><dl class="kv">
+            <dt>Classes held</dt><dd>@summary.SessionsHeld</dd><dt>Not held</dt><dd>@summary.SessionsNotHeld</dd>
+            <dt>Hours</dt><dd>@summary.Hours</dd><dt>Feedback missing</dt><dd>@summary.FeedbackMissing</dd><dt>Earned</dt><dd>@summary.Amount.ToString("₦#,##0.00")</dd>
+        </dl></div>
+    </section>
+}
+
+<section class="section"><h2>Students (@students.Count)</h2>
+    <div class="panel"><ul class="list-plain">@foreach (var s in students) { <li><a asp-controller="Students" asp-action="Details" asp-route-id="@s.Id">@s.FullName</a><span class="muted">@s.StudentCode</span></li> }</ul></div>
+</section>

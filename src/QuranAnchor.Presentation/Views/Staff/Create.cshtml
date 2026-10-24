@@ -1,0 +1,18 @@
+@model StaffFormViewModel
+@inject QuranAnchor.Presentation.Services.CurrentUser Me
+@{ ViewData["Title"] = "New staff account"; }
+<header class="page-head"><h1>New staff account</h1><p class="page-sub">You can only create roles below your own.</p></header>
+<form asp-action="Create" method="post" novalidate>
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+    <div class="form-grid section">
+        <div><label asp-for="FullName" class="form-label"></label><input asp-for="FullName" class="form-control" /><span asp-validation-for="FullName" class="field-error"></span></div>
+        <div><label asp-for="Email" class="form-label"></label><input asp-for="Email" type="email" class="form-control" /><span asp-validation-for="Email" class="field-error"></span></div>
+        <div><label asp-for="Role" class="form-label"></label>
+            <select asp-for="Role" class="form-select">
+                @if (Roles.CanManage(Me.Role, Roles.Admin)) { <option value="@Roles.Admin">Admin (also moderator)</option> }
+                <option value="@Roles.Supervisor">Supervisor</option>
+            </select></div>
+    </div>
+    <button class="btn btn-primary btn-lg" type="submit">Create account</button>
+    <a class="btn btn-link" asp-action="Index">Cancel</a>
+</form>

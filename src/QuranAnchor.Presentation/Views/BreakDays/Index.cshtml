@@ -1,0 +1,19 @@
+@model List<BreakDay>
+@{ ViewData["Title"] = "Break days"; }
+<header class="page-head"><h1>Break days</h1><p class="page-sub">No classes are created on these days, and classes already scheduled for them are cancelled and carried over.</p></header>
+<form asp-action="Add" method="post" class="panel section">
+    <div class="form-grid">
+        <div><label class="form-label" for="startDate">From</label><input type="date" id="startDate" name="startDate" class="form-control" required /></div>
+        <div><label class="form-label" for="endDate">To</label><input type="date" id="endDate" name="endDate" class="form-control" required /></div>
+        <div><label class="form-label" for="reason">Reason</label><input id="reason" name="reason" class="form-control" placeholder="For example Eid" required /></div>
+    </div>
+    <button class="btn btn-primary mt-3" type="submit">Add break</button>
+</form>
+<div class="panel"><ul class="list-plain">
+@foreach (var b in Model)
+{
+    <li><span><strong>@b.Reason</strong> · @b.StartDate.ToString("d MMM yyyy") to @b.EndDate.ToString("d MMM yyyy")</span>
+        <form asp-action="Remove" method="post" onsubmit="return confirm('Remove this break?');"><input type="hidden" name="id" value="@b.Id" /><button class="btn btn-outline-secondary btn-sm">Remove</button></form></li>
+}
+@if (Model.Count == 0) { <li class="muted">No breaks set.</li> }
+</ul></div>

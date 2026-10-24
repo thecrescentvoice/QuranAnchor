@@ -1,0 +1,17 @@
+@model List<(QuranAnchor.Infrastructure.Identity.ApplicationUser User, string Role)>
+@{ ViewData["Title"] = "Staff"; }
+<header class="page-head d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div><h1>Staff</h1><p class="page-sub">Admins and supervisors you can manage.</p></div>
+    <a class="btn btn-primary" asp-action="Create">New staff account</a>
+</header>
+<div class="table-card table-responsive"><table class="table align-middle">
+    <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var (user, role) in Model)
+    {
+        <tr><td>@user.FullName</td><td>@user.Email</td><td>@Roles.DisplayName(role)</td>
+            <td><span class="badge-status @(user.IsActive ? "s-active" : "s-deactivated")">@(user.IsActive ? "Active" : "Deactivated")</span></td>
+            <td><form asp-action="SetActive" method="post"><input type="hidden" name="id" value="@user.Id" /><input type="hidden" name="active" value="@((!user.IsActive).ToString().ToLower())" /><button class="btn btn-outline-secondary btn-sm">@(user.IsActive ? "Deactivate" : "Reactivate")</button></form></td></tr>
+    }
+    </tbody>
+</table></div>

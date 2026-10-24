@@ -1,0 +1,12 @@
+@model AnnouncementFormViewModel
+@{ ViewData["Title"] = "New announcement"; }
+<header class="page-head"><h1>New announcement</h1></header>
+<form asp-action="Create" method="post" novalidate>
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+    <div class="mb-3"><label asp-for="Title" class="form-label"></label><input asp-for="Title" class="form-control" /><span asp-validation-for="Title" class="field-error"></span></div>
+    <div class="mb-3"><label asp-for="Body" class="form-label"></label><textarea asp-for="Body" class="form-control" rows="5"></textarea><span asp-validation-for="Body" class="field-error"></span></div>
+    <div class="mb-3" style="max-width:16rem"><label asp-for="Audience" class="form-label"></label><select asp-for="Audience" asp-items="Html.GetEnumSelectList<AnnouncementAudience>()" class="form-select"></select></div>
+    <div class="form-check mb-4"><input asp-for="SendEmail" class="form-check-input" /><label asp-for="SendEmail" class="form-check-label"></label></div>
+    <button class="btn btn-primary btn-lg" type="submit">Post</button>
+    <a class="btn btn-link" asp-action="Index">Cancel</a>
+</form>

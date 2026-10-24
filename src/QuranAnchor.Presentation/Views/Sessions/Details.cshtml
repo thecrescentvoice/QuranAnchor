@@ -1,0 +1,110 @@
+@model SessionDetailsViewModel
+@inject QuranAnchor.Presentation.Services.CurrentUser Me
+@{
+    var s = Model.Session;
+    ViewData["Title"] = "Class";
+    var tz = Model.ViewerZone;
+}
+<header class="page-head">
+    <h1>@Fmt.Local(s.StartUtc, tz) <span class="badge-status s-@s.Status.ToString().ToLower()">@s.Status</span></h1>
+    <p class="page-sub">@Model.Student.FullName with @Model.Tutor.FullName · @s.DurationMinutes minutes@(s.IsExtra ? " · extra class" : "")</p>
+</header>
+
+@if (Model.Student.TimeZoneId != Model.Tutor.TimeZoneId)
+{
+    <p class="muted">@TimeHelper.Both(s.StartUtc, Model.Tutor.TimeZoneId, Model.Student.TimeZoneId)</p>
+}
+
+<div class="d-flex flex-wrap gap-2 section no-print">
+    @if (Model.CanJoin) { <a class="btn btn-primary btn-lg" asp-action="Join" asp-route-id="@s.Id"><i class="bi bi-camera-video" aria-hidden="true"></i> Join class</a> }
+    @if (Model.CanWriteFeedback) { <a class="btn btn-primary" asp-controller="Feedback" asp-action="Form" asp-route-sessionId="@s.Id">@(s.Feedback is null ? "Write feedback" : "Edit feedback")</a> }
+    @if (s.Feedback is not null && (Me.IsTutor || Me.IsStaff)) { <a class="btn btn-outline-secondary" asp-controller="Feedback" asp-action="CopyText" asp-route-sessionId="@s.Id">Copy as WhatsApp message</a> }
+</div>
+
+<div class="panel section">
+    <dl class="kv">
+        <dt>Package count</dt><dd>@Model.UsedCount of @Model.PackageTotal used so far</dd>
+        @if (s.Status == SessionStatus.NotHeld) { <dt>Not held</dt><dd>@s.NotHeldReason @(string.IsNullOrEmpty(s.NotHeldNote) ? "" : "· " + s.NotHeldNote) @(s.UsesPackageSession ? "· uses a session" : "· does not use a session")</dd> }
+        @if (s.Status == SessionStatus.Cancelled) { <dt>Cancelled</dt><dd>@s.NotHeldReason @s.NotHeldNote</dd> }
+        @if ((Me.IsTutor || Me.IsStaff) && s.Status == SessionStatus.Completed) { <dt>Earned</dt><dd>@s.AmountEarned.ToString("₦#,##0.00")</dd> }
+    </dl>
+</div>
+
+@if (s.Feedback is { } f)
+{
+    <section class="section">
+        <h2>Feedback</h2>
+        <div class="panel">
+            <dl class="kv">
+                <dt>Lesson</dt><dd>@f.LessonTitle</dd>
+                @if (!string.IsNullOrEmpty(f.LearningObjective)) { <dt>Objective</dt><dd>@f.LearningObjective</dd> }
+                <dt>Goal achieved</dt><dd><span class="goal-@f.Goal.ToString().ToLower()">@f.Goal</span>@(string.IsNullOrEmpty(f.GoalNote) ? "" : " · " + f.GoalNote)</dd>
+                <dt>Time used</dt><dd>@f.TimeUsedMinutes minutes</dd>
+                <dt>On track</dt><dd>@f.OnTrack@(string.IsNullOrEmpty(f.OnTrackComment) ? "" : " · " + f.OnTrackComment)</dd>
+                <dt>Tasks progress</dt><dd>@f.TaskProgress@(string.IsNullOrEmpty(f.TaskComment) ? "" : " · " + f.TaskComment)</dd>
+                <dt>Student on time</dt><dd>@(f.StudentOnTime ? "Yes" : "No")</dd>
+                <dt>Cameras</dt><dd>Teacher @(f.TeacherCameraOn ? "on" : "off") · Student @(f.StudentCameraOn ? "on" : "off")</dd>
+                <dt>Environment</dt><dd>Teacher @(f.TeacherEnvironmentConducive ? "conducive" : "not conducive") · Student @(f.StudentEnvironmentConducive ? "conducive" : "not conducive")</dd>
+                <dt>Network</dt><dd>Teacher @(f.TeacherNetworkStable ? "stable" : "unstable") · Student @(f.StudentNetworkStable ? "stable" : "unstable")</dd>
+                <dt>Daily task</dt><dd>Given: @(f.DailyTaskGiven ? "Yes" : "No") · Submitted: @(f.DailyTaskSubmitted ? "Yes" : "No")</dd>
+                @if (!string.IsNullOrEmpty(f.TaskText)) { <dt>Task</dt><dd>@f.TaskText</dd> }
+                @if (!string.IsNullOrEmpty(f.SlidesUrl)) { <dt>Slides</dt><dd><a href="@f.SlidesUrl" target="_blank" rel="noopener">@f.SlidesUrl</a></dd> }
+                @if (!string.IsNullOrEmpty(f.Worksheet)) { <dt>Worksheet</dt><dd>@f.Worksheet</dd> }
+                <dt>Teacher's note</dt><dd>@f.TeacherNote</dd>
+            </dl>
+        </div>
+    </section>
+}
+
+@if (Model.Pending is { } req)
+{
+    <section class="section">
+        <h2>Class change request</h2>
+        <div class="panel">
+            <p>@(req.RequestedByTutor ? "The tutor" : "The student or parent") asks to move this class to <strong>@Fmt.Local(req.ProposedStartUtc, tz)</strong>.<br /><span class="muted">Reason: @req.Reason</span></p>
+            @if (Model.CanRespond)
+            {
+                <div class="d-flex gap-2 no-print">
+                    <form asp-action="Respond" method="post"><input type="hidden" name="requestId" value="@req.Id" /><input type="hidden" name="accept" value="true" /><button class="btn btn-primary">Accept</button></form>
+                    <form asp-action="Respond" method="post"><input type="hidden" name="requestId" value="@req.Id" /><input type="hidden" name="accept" value="false" /><button class="btn btn-outline-secondary">Decline</button></form>
+                </div>
+            }
+            else { <p class="muted mb-0">Waiting for the other side to answer.</p> }
+        </div>
+    </section>
+}
+
+@if (Model.CanRequestReschedule)
+{
+    <section class="section no-print">
+        <h2>Ask to move this class</h2>
+        <div class="panel">
+            <p class="muted">Both sides must agree. The class moves only when the other side accepts. Time in @TimeHelper.City(tz) time.</p>
+            <form asp-action="Reschedule" asp-route-id="@s.Id" method="post" class="d-flex flex-wrap gap-2">
+                <input type="datetime-local" name="when" class="form-control" style="max-width:15rem" required />
+                <input name="reason" class="form-control" style="max-width:22rem" placeholder="Reason" required />
+                <button class="btn btn-outline-secondary">Send request</button>
+            </form>
+        </div>
+    </section>
+}
+
+@if (Model.CanMarkNotHeld)
+{
+    <section class="section no-print">
+        <h2>The class did not hold</h2>
+        <div class="panel">
+            <form asp-action="NotHeld" asp-route-id="@s.Id" method="post" class="d-flex flex-wrap gap-2">
+                <select name="reason" class="form-select" style="max-width:16rem">
+                    <option value="@((int)NotHeldReason.StudentAbsent)">Student absent (no notice)</option>
+                    <option value="@((int)NotHeldReason.StudentExcused)">Student excused</option>
+                    <option value="@((int)NotHeldReason.TutorUnavailable)">Tutor unavailable</option>
+                    <option value="@((int)NotHeldReason.Technical)">Technical problem</option>
+                    <option value="@((int)NotHeldReason.Other)">Other</option>
+                </select>
+                <input name="note" class="form-control" style="max-width:22rem" placeholder="Note (optional)" />
+                <button class="btn btn-outline-secondary">Mark as not held</button>
+            </form>
+        </div>
+    </section>
+}

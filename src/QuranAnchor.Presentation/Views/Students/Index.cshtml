@@ -1,0 +1,34 @@
+@model List<StudentProfile>
+@inject QuranAnchor.Presentation.Services.CurrentUser Me
+@{ ViewData["Title"] = Me.IsTutor ? "My students" : "Students"; }
+<header class="page-head d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div><h1>@ViewData["Title"]</h1><p class="page-sub">@Model.Count student(s)</p></div>
+    @if (Me.Can(Permissions.CreateAccounts)) { <a class="btn btn-primary" asp-action="Create">New student</a> }
+</header>
+
+<form method="get" class="d-flex flex-wrap gap-2 mb-3">
+    <input name="q" value="@ViewBag.Q" class="form-control" style="max-width:16rem" placeholder="Search name or ID" />
+    <select name="level" class="form-select" style="max-width:10rem"><option value="">All levels</option>
+        @foreach (var l in Enum.GetValues<StudentLevel>()) { <option value="@l" selected="@(ViewBag.Level == l)">@l</option> }
+    </select>
+    <select name="status" class="form-select" style="max-width:10rem"><option value="">All</option>
+        @foreach (var s in Enum.GetValues<AccountStatus>()) { <option value="@s" selected="@(ViewBag.Status == s)">@s</option> }
+    </select>
+    <button class="btn btn-outline-secondary" type="submit">Filter</button>
+</form>
+
+<div class="table-card table-responsive">
+    <table class="table align-middle">
+        <thead><tr><th>Name</th><th>ID</th><th>Level</th><th>Tutor</th><th>Sessions / month</th><th>Status</th></tr></thead>
+        <tbody>
+        @foreach (var s in Model)
+        {
+            <tr>
+                <td><a asp-action="Details" asp-route-id="@s.Id">@s.FullName</a></td>
+                <td>@s.StudentCode</td><td>@s.Level</td><td>@s.Tutor?.FullName</td><td>@s.SessionsPerMonth</td>
+                <td><span class="badge-status s-@s.Status.ToString().ToLower()">@s.Status</span></td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>

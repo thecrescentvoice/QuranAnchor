@@ -1,0 +1,16 @@
+@model List<TutorProfile>
+@inject QuranAnchor.Presentation.Services.CurrentUser Me
+@{ ViewData["Title"] = "Tutors"; var counts = (Dictionary<Guid, int>)ViewBag.Counts; }
+<header class="page-head d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div><h1>Tutors</h1><p class="page-sub">@Model.Count tutor(s)</p></div>
+    @if (Me.Can(Permissions.CreateAccounts)) { <a class="btn btn-primary" asp-action="Create">New tutor</a> }
+</header>
+<div class="table-card table-responsive"><table class="table align-middle">
+    <thead><tr><th>Name</th><th>ID</th><th>Email</th><th>Students</th><th>Status</th></tr></thead>
+    <tbody>
+    @foreach (var t in Model)
+    {
+        <tr><td><a asp-action="Details" asp-route-id="@t.Id">@t.FullName</a></td><td>@t.TutorCode</td><td>@t.Email</td><td>@(counts.TryGetValue(t.Id, out var n) ? n : 0)</td><td><span class="badge-status s-@t.Status.ToString().ToLower()">@t.Status</span></td></tr>
+    }
+    </tbody>
+</table></div>

@@ -1,0 +1,230 @@
+@model DashboardData
+@inject QuranAnchor.Application.Abstractions.ISettingsService Settings
+@{
+    ViewData["Title"] = "Dashboard";
+    var b = await Settings.GetBrandingAsync();
+    var tz = Model.Zone;
+    string Help(string category) => Fmt.WhatsApp(b, $"Assalamu alaikum, I would like to report an issue about {Model.Student?.FullName} ({Model.Student?.StudentCode}). Category: {category}.");
+}
+
+<header class="page-head">
+    <h1>Assalamu alaikum, @Model.FullName</h1>
+    <p class="page-sub">Signed in as @Model.RoleName.</p>
+</header>
+
+@if (Model.Announcements.Count > 0)
+{
+    <section class="section">
+        <h2>Announcements</h2>
+        <div class="panel">
+            <ul class="list-plain">
+                @foreach (var a in Model.Announcements)
+                {
+                    <li><span><strong>@a.Title</strong><br /><span class="muted">@a.Body</span></span><span class="muted small">@a.CreatedAtUtc.ToString("d MMM")</span></li>
+                }
+            </ul>
+        </div>
+    </section>
+}
+
+@if (Model.Role == Roles.Student)
+{
+    if (Model.Student is null)
+    {
+        <p class="empty-note">Your student profile was not found. Please contact the supervisor.</p>
+    }
+    else
+    {
+        if (Model.Fee == FeeState.Overdue)
+        {
+            <div class="banner banner-warn"><strong>The portal fee is overdue.</strong> Please pay soon to keep the monthly plan available. <a asp-controller="Payments" asp-action="Index">Pay now</a></div>
+        }
+        else if (Model.Fee == FeeState.Locked)
+        {
+            <div class="banner banner-lock"><strong>The monthly plan is locked</strong> until the portal fee is paid. Your classes and Join button are not affected. <a asp-controller="Payments" asp-action="Index">Pay now</a></div>
+        }
+
+        if (Model.JoinNow is not null)
+        {
+            <div class="join-card">
+                <div class="small-label" style="color:#1F2A2C">Class now</div>
+                <h2 class="h4 mb-3">@Fmt.Time(Model.JoinNow.StartUtc, tz) · @Model.JoinNow.DurationMinutes minutes</h2>
+                <a class="btn btn-lg" asp-controller="Sessions" asp-action="Join" asp-route-id="@Model.JoinNow.Id"><i class="bi bi-camera-video" aria-hidden="true"></i> Join class</a>
+            </div>
+        }
+
+        <div class="row g-3 section">
+            <div class="col-md-6">
+                <div class="panel h-100">
+                    <div class="small-label">This month</div>
+                    @if (Model.Usage is not null)
+                    {
+                        var pct = Model.Usage.Total == 0 ? 0 : Math.Min(100, Model.Usage.Used * 100 / Model.Usage.Total);
+                        <p class="h4 mb-2">@Model.Usage.Used / @Model.Usage.Total sessions</p>
+                        <div class="meter" role="progressbar" aria-valuenow="@pct" aria-valuemin="0" aria-valuemax="100"><span style="width:@(pct)%"></span></div>
+                    }
+                    else
+                    {
+                        <p class="muted mb-0">No classes are set up for this month yet.</p>
+                    }
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="panel h-100">
+                    <div class="small-label">Portal fee</div>
+                    <p class="h5 mb-1">@(Model.Fee switch { FeeState.Paid => "Paid", FeeState.Exempt => "Not required", FeeState.Overdue => "Overdue", _ => "Locked" })</p>
+                    @if (Model.Student.PaidUntilUtc is { } until) { <p class="muted mb-2">Paid until @until.ToString("d MMM yyyy")</p> }
+                    <a asp-controller="Payments" asp-action="Index">Pay or see receipts</a>
+                </div>
+            </div>
+        </div>
+
+        <section class="section">
+            <h2>Upcoming classes</h2>
+            <div class="panel">
+                @if (Model.Upcoming.Count == 0) { <p class="muted mb-0">No upcoming classes.</p> }
+                else
+                {
+                    <ul class="list-plain">
+                        @foreach (var s in Model.Upcoming)
+                        {
+                            <li><a asp-controller="Sessions" asp-action="Details" asp-route-id="@s.Id">@Fmt.Local(s.StartUtc, tz)</a><span class="muted">@s.DurationMinutes min</span></li>
+                        }
+                    </ul>
+                }
+            </div>
+        </section>
+
+        @if (!string.IsNullOrEmpty(b.SupervisorWhatsApp))
+        {
+            <section class="section">
+                <h2>Report an issue</h2>
+                <div class="panel">
+                    <p class="muted">This opens WhatsApp with a message already written. You can edit it before you send.</p>
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach (var category in new[] { "Class problem", "Concern about the tutor", "Payment", "Technical problem", "Other" })
+                        {
+                            <a class="btn btn-outline-secondary" href="@Help(category)" target="_blank" rel="noopener">@category</a>
+                        }
+                    </div>
+                </div>
+            </section>
+        }
+    }
+}
+else if (Model.Role == Roles.Tutor)
+{
+    <div class="row g-3 section">
+        <div class="col-md-6"><div class="panel h-100"><div class="small-label">This month</div><p class="h4 mb-1">@Model.MonthAmount.ToString("₦#,##0.00")</p><p class="muted mb-0">from @Model.MonthHeld classes · <a asp-controller="Earnings" asp-action="Mine">Details</a></p></div></div>
+        <div class="col-md-6"><div class="panel h-100"><div class="small-label">Feedback waiting</div><p class="h4 mb-1">@Model.NeedFeedback.Count</p><p class="muted mb-0">classes with no feedback yet</p></div></div>
+    </div>
+
+    @if (Model.RequestsForMe.Count > 0)
+    {
+        <section class="section">
+            <h2>Class change requests</h2>
+            <div class="panel"><ul class="list-plain">
+                @foreach (var r in Model.RequestsForMe)
+                {
+                    <li><span>@r.Session?.Student?.FullName asks to move a class to <strong>@Fmt.Local(r.ProposedStartUtc, tz)</strong></span><a asp-controller="Sessions" asp-action="Details" asp-route-id="@r.SessionId">Answer</a></li>
+                }
+            </ul></div>
+        </section>
+    }
+
+    <section class="section">
+        <h2>Today's classes</h2>
+        <div class="panel">
+            @if (Model.Today.Count == 0) { <p class="muted mb-0">No classes today.</p> }
+            else
+            {
+                <ul class="list-plain">
+                    @foreach (var s in Model.Today)
+                    {
+                        <li><span><strong>@Fmt.Time(s.StartUtc, tz)</strong> · @s.Student?.FullName · @s.DurationMinutes min</span><a asp-controller="Sessions" asp-action="Details" asp-route-id="@s.Id">Open</a></li>
+                    }
+                </ul>
+            }
+        </div>
+    </section>
+
+    @if (Model.NeedFeedback.Count > 0)
+    {
+        <section class="section">
+            <h2>Write feedback</h2>
+            <div class="panel"><ul class="list-plain">
+                @foreach (var s in Model.NeedFeedback)
+                {
+                    <li><span>@Fmt.Local(s.StartUtc, tz) · @s.Student?.FullName</span><a asp-controller="Feedback" asp-action="Form" asp-route-sessionId="@s.Id">Write feedback</a></li>
+                }
+            </ul></div>
+        </section>
+    }
+}
+else
+{
+    <div class="row g-3 section">
+        <div class="col-6 col-md-3"><div class="panel h-100"><div class="small-label">No feedback</div><p class="h3 mb-0">@Model.MissingFeedback.Count</p></div></div>
+        <div class="col-6 col-md-3"><div class="panel h-100"><div class="small-label">Packages ending</div><p class="h3 mb-0">@Model.Ending.Count</p></div></div>
+        <div class="col-6 col-md-3"><div class="panel h-100"><div class="small-label">Change requests</div><p class="h3 mb-0">@Model.PendingRequests.Count</p></div></div>
+        <div class="col-6 col-md-3"><div class="panel h-100"><div class="small-label">Fee overdue</div><p class="h3 mb-0">@Model.OverdueFees.Count</p></div></div>
+    </div>
+
+    <section class="section">
+        <h2>Classes with no feedback</h2>
+        <div class="panel">
+            @if (Model.MissingFeedback.Count == 0) { <p class="muted mb-0">Nothing missing.</p> }
+            else
+            {
+                <ul class="list-plain">
+                    @foreach (var s in Model.MissingFeedback)
+                    {
+                        <li><span>@Fmt.Local(s.StartUtc, s.Student?.TimeZoneId ?? tz) · @s.Student?.FullName · @s.Tutor?.FullName</span><a asp-controller="Sessions" asp-action="Details" asp-route-id="@s.Id">Open</a></li>
+                    }
+                </ul>
+            }
+        </div>
+    </section>
+
+    <section class="section">
+        <h2>Packages nearly used up, or sessions still unscheduled</h2>
+        <div class="panel">
+            @if (Model.Ending.Count == 0) { <p class="muted mb-0">Nothing to do.</p> }
+            else
+            {
+                <ul class="list-plain">
+                    @foreach (var e in Model.Ending)
+                    {
+                        <li><a asp-controller="Students" asp-action="Details" asp-route-id="@e.Student.Id">@e.Student.FullName</a><span class="muted">@e.Usage.Used of @e.Usage.Total used · @e.Usage.Unscheduled not yet scheduled</span></li>
+                    }
+                </ul>
+            }
+        </div>
+    </section>
+
+    @if (Model.PendingRequests.Count > 0)
+    {
+        <section class="section">
+            <h2>Pending class change requests</h2>
+            <div class="panel"><ul class="list-plain">
+                @foreach (var r in Model.PendingRequests)
+                {
+                    <li><span>@r.Session?.Student?.FullName · to @Fmt.Local(r.ProposedStartUtc, r.Session?.Student?.TimeZoneId ?? tz)</span><a asp-controller="Sessions" asp-action="Details" asp-route-id="@r.SessionId">Open</a></li>
+                }
+            </ul></div>
+        </section>
+    }
+
+    @if (Model.OverdueFees.Count > 0)
+    {
+        <section class="section">
+            <h2>Portal fee overdue</h2>
+            <div class="panel"><ul class="list-plain">
+                @foreach (var s in Model.OverdueFees)
+                {
+                    <li><a asp-controller="Students" asp-action="Details" asp-route-id="@s.Id">@s.FullName</a><span class="muted">paid until @(s.PaidUntilUtc?.ToString("d MMM") ?? "never")</span></li>
+                }
+            </ul></div>
+        </section>
+    }
+}

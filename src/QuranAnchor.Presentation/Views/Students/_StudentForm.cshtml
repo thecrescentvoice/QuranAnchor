@@ -1,0 +1,55 @@
+@model StudentFormViewModel
+@{
+    var isEdit = (bool)(ViewData["IsEdit"] ?? false);
+    var tutors = (IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.Tutors;
+    var zones = (IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.Zones;
+}
+<div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+<fieldset class="section">
+    <legend class="h5">Student and parent</legend>
+    <div class="form-grid">
+        <div><label asp-for="FullName" class="form-label"></label><input asp-for="FullName" class="form-control" /><span asp-validation-for="FullName" class="field-error"></span></div>
+        <div><label asp-for="ParentName" class="form-label"></label><input asp-for="ParentName" class="form-control" /><span asp-validation-for="ParentName" class="field-error"></span></div>
+        <div><label asp-for="ParentEmail" class="form-label"></label><input asp-for="ParentEmail" type="email" class="form-control" /><span asp-validation-for="ParentEmail" class="field-error"></span></div>
+        <div><label asp-for="Phone" class="form-label"></label><input asp-for="Phone" class="form-control" /></div>
+        <div><label asp-for="Country" class="form-label"></label><input asp-for="Country" class="form-control" /></div>
+        <div><label asp-for="TimeZoneId" class="form-label"></label><select asp-for="TimeZoneId" asp-items="zones" class="form-select"></select></div>
+    </div>
+</fieldset>
+
+<fieldset class="section">
+    <legend class="h5">Classes</legend>
+    <div class="form-grid">
+        <div><label asp-for="Level" class="form-label"></label><select asp-for="Level" asp-items="Html.GetEnumSelectList<StudentLevel>()" class="form-select"></select></div>
+        @if (!isEdit)
+        {
+            <div><label asp-for="TutorId" class="form-label"></label><select asp-for="TutorId" asp-items="tutors" class="form-select"><option value="">Choose a tutor</option></select><span asp-validation-for="TutorId" class="field-error"></span></div>
+        }
+        <div><label asp-for="SessionsPerMonth" class="form-label"></label><input asp-for="SessionsPerMonth" type="number" class="form-control" /><span asp-validation-for="SessionsPerMonth" class="field-error"></span></div>
+        @if (!isEdit)
+        {
+            <div><label asp-for="SessionsThisMonth" class="form-label"></label><input asp-for="SessionsThisMonth" type="number" class="form-control" /><div class="form-text">For a student who joins mid-month.</div></div>
+        }
+        <div><label asp-for="MeetingLink" class="form-label"></label><input asp-for="MeetingLink" class="form-control" placeholder="https://meet.google.com/..." /><span asp-validation-for="MeetingLink" class="field-error"></span></div>
+    </div>
+</fieldset>
+
+@if (!isEdit)
+{
+    <fieldset class="section">
+        <legend class="h5">Weekly class days and times</legend>
+        <p class="muted">Times are in the student's time zone. Leave unused rows empty. These repeat every week.</p>
+        @for (var i = 0; i < Model.Slots.Count; i++)
+        {
+            <div class="rate-row">
+                <select name="Slots[@i].Day" class="form-select" style="max-width:11rem">
+                    <option value="">Day</option>
+                    @foreach (var d in Enum.GetValues<DayOfWeek>()) { <option value="@d" selected="@(Model.Slots[i].Day == d)">@d</option> }
+                </select>
+                <input type="time" name="Slots[@i].Time" value="@Model.Slots[i].Time?.ToString("HH:mm")" class="form-control" style="max-width:9rem" />
+                <input type="number" name="Slots[@i].Duration" value="@Model.Slots[i].Duration" class="form-control" style="max-width:8rem" placeholder="Minutes" />
+            </div>
+        }
+    </fieldset>
+}

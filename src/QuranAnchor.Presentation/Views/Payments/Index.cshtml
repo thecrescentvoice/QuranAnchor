@@ -1,0 +1,48 @@
+@model StudentProfile
+@{
+    ViewData["Title"] = "Portal fee";
+    var fee = (FeeState)ViewBag.Fee;
+    var prices = (List<PortalPrice>)ViewBag.Prices;
+    var history = (List<Payment>)ViewBag.History;
+}
+<header class="page-head"><h1>Portal fee</h1><p class="page-sub">The monthly fee for using the portal. Class fees are paid separately, as before.</p></header>
+
+<div class="panel section">
+    <div class="small-label">Status</div>
+    <p class="h4 mb-1">@(fee switch { FeeState.Paid => "Paid", FeeState.Exempt => "Not required", FeeState.Overdue => "Overdue", _ => "Locked" })</p>
+    @if (Model.PaidUntilUtc is { } until) { <p class="muted mb-0">Paid until @until.ToString("d MMM yyyy")</p> }
+    @if (fee == FeeState.Locked) { <p class="mb-0 mt-2"><strong>The monthly plan is locked until you pay.</strong> Your classes and Join button still work.</p> }
+</div>
+
+@if (fee != FeeState.Exempt)
+{
+    <section class="section">
+        <h2>Pay for one month</h2>
+        <div class="panel">
+            @if (prices.Count == 0) { <p class="muted mb-0">Online payment is not available yet.</p> }
+            else
+            {
+                <form asp-action="Pay" method="post" class="d-flex flex-wrap gap-2 align-items-center">
+                    <select name="currency" class="form-select" style="max-width:14rem">
+                        @foreach (var p in prices) { <option value="@p.Currency" selected="@(p.Currency == Model.PreferredCurrency)">@Fmt.Money(p.Currency, p.Amount) (@p.Currency)</option> }
+                    </select>
+                    <button class="btn btn-primary" type="submit">Pay now</button>
+                </form>
+                <div class="form-text mt-2">You choose the currency. You will be taken to Paystack's secure page.</div>
+            }
+        </div>
+    </section>
+}
+
+<section class="section">
+    <h2>Receipts</h2>
+    <div class="panel">
+        @if (history.Count == 0) { <p class="muted mb-0">No payments yet.</p> }
+        <ul class="list-plain">
+            @foreach (var h in history)
+            {
+                <li><span>@h.PaidAtUtc?.ToString("d MMM yyyy") · @Fmt.Money(h.Currency, h.Amount)</span><span class="muted">for @h.PeriodStartUtc?.ToString("d MMM") to @h.PeriodEndUtc?.ToString("d MMM yyyy") · @h.Reference</span></li>
+            }
+        </ul>
+    </div>
+</section>

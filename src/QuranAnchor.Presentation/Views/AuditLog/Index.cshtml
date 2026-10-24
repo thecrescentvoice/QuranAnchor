@@ -1,0 +1,56 @@
+@model AuditLogPageViewModel
+@{
+    ViewData["Title"] = "Audit log";
+}
+
+<header class="page-head">
+    <h1>Audit log</h1>
+    <p class="page-sub">Times are in UTC. Newest first.</p>
+</header>
+
+@if (Model.Items.Count == 0)
+{
+    <p class="empty-note">Nothing has been recorded yet.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table audit-table align-middle">
+            <thead>
+                <tr>
+                    <th scope="col">When</th>
+                    <th scope="col">Who</th>
+                    <th scope="col">Action</th>
+                    <th scope="col">Target</th>
+                    <th scope="col">Details</th>
+                    <th scope="col">IP address</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var entry in Model.Items)
+                {
+                    <tr>
+                        <td class="text-nowrap">@entry.OccurredAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td>@(entry.UserName ?? "-")</td>
+                        <td>@entry.Action</td>
+                        <td>@entry.Target</td>
+                        <td class="audit-details">@entry.Details</td>
+                        <td class="text-nowrap">@entry.IpAddress</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <nav class="pager" aria-label="Audit log pages">
+        @if (Model.Page > 1)
+        {
+            <a asp-action="Index" asp-route-page="@(Model.Page - 1)">Newer</a>
+        }
+        <span>Page @Model.Page of @Model.TotalPages</span>
+        @if (Model.Page < Model.TotalPages)
+        {
+            <a asp-action="Index" asp-route-page="@(Model.Page + 1)">Older</a>
+        }
+    </nav>
+}

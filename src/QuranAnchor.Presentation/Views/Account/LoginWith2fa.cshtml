@@ -1,0 +1,15 @@
+@model TwoFactorCodeViewModel
+@{ Layout = "_AuthLayout"; ViewData["Title"] = "Two-step verification"; }
+<h1 class="auth-title">Two-step verification</h1>
+<p class="auth-sub">Open your authenticator app and enter the 6-digit code.</p>
+<form asp-action="LoginWith2fa" method="post" novalidate>
+    <input type="hidden" asp-for="ReturnUrl" />
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+    <div class="mb-4">
+        <label asp-for="Code" class="form-label"></label>
+        <input asp-for="Code" class="form-control form-control-lg" inputmode="numeric" autocomplete="one-time-code" autofocus />
+        <span asp-validation-for="Code" class="field-error"></span>
+    </div>
+    <button type="submit" class="btn btn-primary btn-lg w-100">Verify</button>
+</form>
+<div class="auth-links"><a asp-action="Login">Back to sign in</a></div>

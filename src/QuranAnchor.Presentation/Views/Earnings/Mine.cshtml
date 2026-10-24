@@ -1,0 +1,26 @@
+@{
+    ViewData["Title"] = "Earnings";
+    var sessions = (List<ClassSession>)ViewBag.Sessions;
+    var summary = ViewBag.Summary as TutorSummary;
+    int year = ViewBag.Year; int month = ViewBag.Month;
+    string zone = ViewBag.Zone;
+    var prev = new DateOnly(year, month, 1).AddMonths(-1);
+    var next = new DateOnly(year, month, 1).AddMonths(1);
+}
+<header class="page-head"><h1>Earnings: @Fmt.Month(year, month)</h1><p class="page-sub">The total starts again on the 1st of each month. Earlier months stay here.</p></header>
+<div class="d-flex gap-2 mb-3 no-print">
+    <a class="btn btn-outline-secondary" asp-route-year="@prev.Year" asp-route-month="@prev.Month">Previous month</a>
+    <a class="btn btn-outline-secondary" asp-route-year="@next.Year" asp-route-month="@next.Month">Next month</a>
+</div>
+<div class="row g-3 section">
+    <div class="col-md-4"><div class="panel h-100"><div class="small-label">Earned</div><p class="h3 mb-0">@((summary?.Amount ?? 0).ToString("₦#,##0.00"))</p></div></div>
+    <div class="col-md-4"><div class="panel h-100"><div class="small-label">Classes held</div><p class="h3 mb-0">@(summary?.SessionsHeld ?? 0)</p></div></div>
+    <div class="col-md-4"><div class="panel h-100"><div class="small-label">Hours</div><p class="h3 mb-0">@(summary?.Hours ?? 0)</p></div></div>
+</div>
+<div class="table-card table-responsive"><table class="table align-middle">
+    <thead><tr><th>Date</th><th>Student</th><th>Length</th><th class="text-end">Amount</th></tr></thead>
+    <tbody>
+    @foreach (var s in sessions) { <tr><td class="text-nowrap">@Fmt.Local(s.StartUtc, zone)</td><td>@s.Student?.FullName</td><td>@s.DurationMinutes min</td><td class="text-end">@s.AmountEarned.ToString("₦#,##0.00")</td></tr> }
+    </tbody>
+</table></div>
+<p class="muted mt-2">An amount appears after you submit the feedback for the class. Classes where the student did not show up are not paid.</p>

@@ -1,0 +1,75 @@
+@model FeedbackFormViewModel
+@{ ViewData["Title"] = "Class feedback"; }
+<header class="page-head"><h1>Class feedback</h1><p class="page-sub">@Model.StudentName · @Model.WhenText</p></header>
+
+<form asp-action="Form" method="post" novalidate>
+    <input type="hidden" asp-for="SessionId" />
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+    <fieldset class="section">
+        <legend class="h5">Lesson</legend>
+        <div class="form-grid">
+            <div><label asp-for="LessonTitle" class="form-label"></label><input asp-for="LessonTitle" class="form-control" /></div>
+            <div><label asp-for="LearningObjective" class="form-label"></label><input asp-for="LearningObjective" class="form-control" /></div>
+            <div><label asp-for="Goal" class="form-label"></label><select asp-for="Goal" asp-items="Html.GetEnumSelectList<GoalResult>()" class="form-select"></select></div>
+            <div><label asp-for="GoalNote" class="form-label"></label><input asp-for="GoalNote" class="form-control" /></div>
+            <div><label asp-for="TimeUsedMinutes" class="form-label"></label><input asp-for="TimeUsedMinutes" type="number" class="form-control" /></div>
+        </div>
+    </fieldset>
+
+    <fieldset class="section">
+        <legend class="h5">Progress</legend>
+        <div class="form-grid">
+            <div><label asp-for="OnTrack" class="form-label"></label><select asp-for="OnTrack" asp-items="Html.GetEnumSelectList<OnTrackStatus>()" class="form-select"></select></div>
+            <div><label asp-for="OnTrackComment" class="form-label"></label><input asp-for="OnTrackComment" class="form-control" /></div>
+            <div><label asp-for="TaskProgress" class="form-label"></label><select asp-for="TaskProgress" asp-items="Html.GetEnumSelectList<OnTrackStatus>()" class="form-select"></select></div>
+            <div><label asp-for="TaskComment" class="form-label"></label><input asp-for="TaskComment" class="form-control" /></div>
+        </div>
+    </fieldset>
+
+    <fieldset class="section">
+        <legend class="h5">Class conditions</legend>
+        <div class="switch-grid">
+            @foreach (var (name, label) in new[] { ("StudentOnTime", "Student joined on time"), ("TeacherCameraOn", "Teacher camera on"), ("StudentCameraOn", "Student camera on"),
+                ("TeacherEnvironmentConducive", "Teacher environment conducive"), ("StudentEnvironmentConducive", "Student environment conducive"),
+                ("TeacherNetworkStable", "Teacher network stable"), ("StudentNetworkStable", "Student network stable") })
+            {
+                var isOn = (bool)typeof(FeedbackFormViewModel).GetProperty(name)!.GetValue(Model)!;
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" role="switch" id="@name" name="@name" value="true" checked="@isOn" />
+                    <input type="hidden" name="@name" value="false" />
+                    <label class="form-check-label" for="@name">@label</label>
+                </div>
+            }
+        </div>
+    </fieldset>
+
+    <fieldset class="section">
+        <legend class="h5">Tasks and resources</legend>
+        <div class="switch-grid mb-3">
+            @foreach (var (name, label) in new[] { ("DailyTaskGiven", "Daily task given (voice note and written)"), ("DailyTaskSubmitted", "Daily task submitted (voice note and written)"), ("TaskSubmitted", "Task submitted") })
+            {
+                var isOn = (bool)typeof(FeedbackFormViewModel).GetProperty(name)!.GetValue(Model)!;
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" role="switch" id="@name" name="@name" value="true" checked="@isOn" />
+                    <input type="hidden" name="@name" value="false" />
+                    <label class="form-check-label" for="@name">@label</label>
+                </div>
+            }
+        </div>
+        <div class="form-grid">
+            <div><label asp-for="TaskText" class="form-label"></label><input asp-for="TaskText" class="form-control" /></div>
+            <div><label asp-for="SlidesUrl" class="form-label"></label><input asp-for="SlidesUrl" class="form-control" /></div>
+            <div><label asp-for="Worksheet" class="form-label"></label><input asp-for="Worksheet" class="form-control" /></div>
+        </div>
+    </fieldset>
+
+    <div class="mb-4">
+        <label asp-for="TeacherNote" class="form-label"></label>
+        <textarea asp-for="TeacherNote" class="form-control" rows="5"></textarea>
+        <span asp-validation-for="TeacherNote" class="field-error"></span>
+    </div>
+
+    <button class="btn btn-primary btn-lg" type="submit">Save feedback</button>
+    <a class="btn btn-link" asp-controller="Sessions" asp-action="Details" asp-route-id="@Model.SessionId">Cancel</a>
+</form>

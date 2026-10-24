@@ -1,0 +1,18 @@
+@model TutorProfile
+@{
+    ViewData["Title"] = "Replace tutor";
+    var others = (IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.Others;
+    var students = (List<StudentProfile>)ViewBag.Students;
+}
+<header class="page-head"><h1>Replace @Model.FullName</h1><p class="page-sub">The students and upcoming classes move to the new tutor, and @Model.FullName can no longer sign in. Their past records stay under their own name.</p></header>
+<div class="panel section">
+    <div class="small-label mb-2">Students who will move (@students.Count)</div>
+    <ul class="list-plain">@foreach (var s in students) { <li>@s.FullName<span class="muted">@s.StudentCode</span></li> }</ul>
+</div>
+<form asp-action="Replace" asp-route-id="@Model.Id" method="post" onsubmit="return confirm('Move all these students and deactivate @Model.FullName?');">
+    <div class="mb-3" style="max-width:24rem"><label class="form-label" for="newTutorId">New tutor</label>
+        <select name="newTutorId" id="newTutorId" asp-items="others" class="form-select" required><option value="">Choose a tutor</option></select></div>
+    <button class="btn btn-primary btn-lg" type="submit">Replace tutor</button>
+    <a class="btn btn-link" asp-action="Details" asp-route-id="@Model.Id">Cancel</a>
+</form>
+<p class="muted mt-3">After this, replace the Meet link for each student (a checklist is shown when it is done).</p>

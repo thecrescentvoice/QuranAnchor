@@ -1,0 +1,199 @@
+@model StudentDetailsViewModel
+@inject QuranAnchor.Presentation.Services.CurrentUser Me
+@{
+    var s = Model.Student;
+    ViewData["Title"] = s.FullName;
+    var canSchedule = Me.Can(Permissions.ManageSchedules) || Me.IsTutor;
+    var today = TimeHelper.LocalToday(s.TimeZoneId);
+    var now = DateTime.UtcNow;
+}
+
+<header class="page-head">
+    <h1>@s.FullName <span class="badge-status s-@s.Status.ToString().ToLower()">@s.Status</span></h1>
+    <p class="page-sub">@s.StudentCode · @s.Level · Tutor: @(s.Tutor?.FullName ?? "none")</p>
+</header>
+
+@if (!string.IsNullOrEmpty(Model.TempPassword))
+{
+    <div class="banner banner-warn">
+        <strong>Temporary password (shown once):</strong>
+        <div class="temp-pass my-1">@Model.TempPassword</div>
+        <span class="muted">Sign-in name: @s.StudentCode. The parent must choose their own password at the first sign-in.</span>
+    </div>
+}
+
+@if (Me.IsStaff)
+{
+    <div class="d-flex flex-wrap gap-2 section no-print">
+        @if (Me.Can(Permissions.EditAccounts)) { <a class="btn btn-outline-secondary" asp-action="Edit" asp-route-id="@s.Id">Edit</a> }
+        @if (s.Status == AccountStatus.Deactivated)
+        {
+            @if (Me.Can(Permissions.ReactivateAccounts)) { <form asp-action="Reactivate" asp-route-id="@s.Id" method="post"><button class="btn btn-outline-secondary">Reactivate</button></form> }
+        }
+        else
+        {
+            @if (Me.Can(Permissions.DeactivateAccounts)) { <form asp-action="Deactivate" asp-route-id="@s.Id" method="post" onsubmit="return confirm('Deactivate this account? The history is kept.');"><button class="btn btn-outline-secondary">Deactivate</button></form> }
+        }
+        @if (Me.Can(Permissions.EditAccounts))
+        {
+            @if (s.Status == AccountStatus.OnHold) { <form asp-action="Resume" asp-route-id="@s.Id" method="post"><button class="btn btn-outline-secondary">Resume classes</button></form> }
+            else if (s.Status == AccountStatus.Active)
+            {
+                <form asp-action="Pause" asp-route-id="@s.Id" method="post" class="d-flex gap-2"><input type="date" name="until" class="form-control" title="Return date (optional)" /><button class="btn btn-outline-secondary">Put on hold</button></form>
+            }
+            <form asp-action="ResetPassword" asp-route-id="@s.Id" method="post" onsubmit="return confirm('Make a new temporary password?');"><button class="btn btn-outline-secondary">New temporary password</button></form>
+        }
+        @if (Me.Can(Permissions.MarkFeePaid))
+        {
+            <form asp-controller="Payments" asp-action="MarkPaid" method="post" class="d-flex gap-2"><input type="hidden" name="studentId" value="@s.Id" /><input name="note" class="form-control" placeholder="Note (for example bank transfer)" /><button class="btn btn-outline-secondary">Mark fee paid</button></form>
+            <form asp-controller="Payments" asp-action="ToggleExempt" method="post"><input type="hidden" name="studentId" value="@s.Id" /><button class="btn btn-outline-secondary">@(s.IsFeeExempt ? "Fee applies again" : "Waive fee")</button></form>
+        }
+        @if (Me.Can(Permissions.DeleteAccounts))
+        {
+            <form asp-action="Delete" asp-route-id="@s.Id" method="post" onsubmit="return confirm('Delete permanently? This also erases all classes, feedback, plans and reports of this student.');"><button class="btn btn-outline-danger">Delete permanently</button></form>
+        }
+    </div>
+}
+
+<div class="row g-3 section">
+    <div class="col-md-6">
+        <div class="panel h-100">
+            <div class="small-label mb-2">Details</div>
+            <dl class="kv">
+                <dt>Parent</dt><dd>@s.ParentName</dd>
+                <dt>Email</dt><dd>@s.ParentEmail</dd>
+                <dt>Phone</dt><dd>@s.Phone</dd>
+                <dt>Country</dt><dd>@s.Country</dd>
+                <dt>Time zone</dt><dd>@s.TimeZoneId</dd>
+                <dt>Sessions per month</dt><dd>@s.SessionsPerMonth</dd>
+                <dt>Portal fee</dt><dd>@(Model.Fee switch { FeeState.Paid => "Paid", FeeState.Exempt => "Waived", FeeState.Overdue => "Overdue (grace period)", _ => "Locked" })@(s.PaidUntilUtc is { } u ? $" · until {u:d MMM yyyy}" : "")</dd>
+            </dl>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="panel h-100">
+            <div class="small-label mb-2">This month</div>
+            @if (Model.Usage is not null && Model.Package is not null)
+            {
+                var pct = Model.Usage.Total == 0 ? 0 : Math.Min(100, Model.Usage.Used * 100 / Model.Usage.Total);
+                <p class="h4 mb-1">@Model.Usage.Used / @Model.Usage.Total sessions used</p>
+                <div class="meter mb-2"><span style="width:@(pct)%"></span></div>
+                <p class="muted mb-0">@Model.Usage.ScheduledAhead scheduled ahead · @Model.Usage.Unscheduled not yet scheduled@(Model.Package.CarriedInSessions > 0 ? $" · {Model.Package.CarriedInSessions} carried over" : "")</p>
+            }
+            else { <p class="muted mb-0">No package for this month yet.</p> }
+        </div>
+    </div>
+</div>
+
+@if (Me.Can(Permissions.RotateMeetLink))
+{
+    <section class="section no-print">
+        <h2>Google Meet link</h2>
+        <div class="panel">
+            <p class="mb-2"><a href="@s.MeetingLink" target="_blank" rel="noopener">@(string.IsNullOrEmpty(s.MeetingLink) ? "No link set" : s.MeetingLink)</a>@(s.MeetingLinkChangedAtUtc is { } c ? $" · changed {c:d MMM yyyy}" : "")</p>
+            <form asp-action="RotateLink" asp-route-id="@s.Id" method="post" class="d-flex flex-wrap gap-2">
+                <input name="newLink" class="form-control" style="max-width:28rem" placeholder="New https://meet.google.com/... link" required />
+                <button class="btn btn-outline-secondary">Replace link</button>
+            </form>
+            <div class="form-text">Replace the link whenever a tutor leaves or the link may have been shared.</div>
+        </div>
+    </section>
+}
+
+<section class="section">
+    <h2>Weekly classes</h2>
+    <div class="panel">
+        @if (Model.Slots.Count == 0) { <p class="muted">No weekly classes yet.</p> }
+        <ul class="list-plain">
+            @foreach (var slot in Model.Slots)
+            {
+                <li>
+                    <span><strong>@slot.DayOfWeek</strong> @slot.LocalStartTime.ToString("h:mm tt") · @slot.DurationMinutes min <span class="muted">(@TimeHelper.City(slot.TimeZoneId) time, from @slot.EffectiveFrom.ToString("d MMM yyyy")@(slot.EffectiveTo is { } to ? $", until {to:d MMM yyyy}" : ""))</span></span>
+                    @if (canSchedule)
+                    {
+                        <details class="no-print">
+                            <summary>Change</summary>
+                            <form asp-controller="Schedules" asp-action="Change" method="post" class="rate-row">
+                                <input type="hidden" name="scheduleId" value="@slot.Id" />
+                                <select name="day" class="form-select" style="max-width:10rem">@foreach (var d in Enum.GetValues<DayOfWeek>()) { <option value="@d" selected="@(d == slot.DayOfWeek)">@d</option> }</select>
+                                <input type="time" name="time" value="@slot.LocalStartTime.ToString("HH:mm")" class="form-control" style="max-width:9rem" required />
+                                <input type="number" name="duration" value="@slot.DurationMinutes" class="form-control" style="max-width:7rem" required />
+                                <input type="date" name="from" value="@today.AddDays(1).ToString("yyyy-MM-dd")" class="form-control" style="max-width:11rem" title="Starts from" required />
+                                <button class="btn btn-primary btn-sm">Save change</button>
+                            </form>
+                            <form asp-controller="Schedules" asp-action="Remove" method="post" class="rate-row" onsubmit="return confirm('Remove this weekly class from that date?');">
+                                <input type="hidden" name="scheduleId" value="@slot.Id" />
+                                <input type="date" name="from" value="@today.AddDays(1).ToString("yyyy-MM-dd")" class="form-control" style="max-width:11rem" required />
+                                <button class="btn btn-outline-danger btn-sm">Remove from this date</button>
+                            </form>
+                        </details>
+                    }
+                </li>
+            }
+        </ul>
+        @if (canSchedule)
+        {
+            <form asp-controller="Schedules" asp-action="Add" method="post" class="rate-row no-print">
+                <input type="hidden" name="studentId" value="@s.Id" />
+                <select name="day" class="form-select" style="max-width:10rem">@foreach (var d in Enum.GetValues<DayOfWeek>()) { <option value="@d">@d</option> }</select>
+                <input type="time" name="time" class="form-control" style="max-width:9rem" required />
+                <input type="number" name="duration" value="30" class="form-control" style="max-width:7rem" required />
+                <button class="btn btn-outline-secondary btn-sm">Add weekly class</button>
+            </form>
+            <div class="form-text">Times are in @TimeHelper.City(s.TimeZoneId) time. A change applies from the date you choose, and the parent is emailed.</div>
+        }
+    </div>
+</section>
+
+@if (canSchedule)
+{
+    <section class="section no-print">
+        <h2>Add an extra class</h2>
+        <div class="panel">
+            <form asp-controller="Sessions" asp-action="AddExtra" method="post" class="rate-row">
+                <input type="hidden" name="studentId" value="@s.Id" />
+                <input type="datetime-local" name="when" class="form-control" style="max-width:15rem" required />
+                <input type="number" name="duration" value="30" class="form-control" style="max-width:7rem" required />
+                <button class="btn btn-outline-secondary">Add class</button>
+            </form>
+            <div class="form-text">For example to use up carried-over sessions. Time in @TimeHelper.City(s.TimeZoneId) time.</div>
+        </div>
+    </section>
+}
+
+<section class="section">
+    <h2>Upcoming classes</h2>
+    <div class="panel">
+        @if (Model.Upcoming.Count == 0) { <p class="muted mb-0">None.</p> }
+        <ul class="list-plain">
+            @foreach (var c in Model.Upcoming) { <li><a asp-controller="Sessions" asp-action="Details" asp-route-id="@c.Id">@Fmt.Local(c.StartUtc, s.TimeZoneId)</a><span class="muted">@c.DurationMinutes min@(c.IsExtra ? " · extra" : "")</span></li> }
+        </ul>
+    </div>
+</section>
+
+<section class="section">
+    <h2>Recent classes</h2>
+    <div class="panel">
+        @if (Model.Recent.Count == 0) { <p class="muted mb-0">None yet.</p> }
+        <ul class="list-plain">
+            @foreach (var c in Model.Recent) { <li><a asp-controller="Sessions" asp-action="Details" asp-route-id="@c.Id">@Fmt.Local(c.StartUtc, s.TimeZoneId)</a><span class="badge-status s-@c.Status.ToString().ToLower()">@c.Status</span></li> }
+        </ul>
+    </div>
+</section>
+
+<div class="row g-3 section">
+    <div class="col-md-6">
+        <div class="panel h-100">
+            <div class="small-label mb-2">Monthly plans</div>
+            @if (Me.IsStaff || Me.IsTutor) { <p><a asp-controller="Plans" asp-action="Edit" asp-route-studentId="@s.Id">Write or edit this month's plan</a></p> }
+            <ul class="list-plain">@foreach (var p in Model.Plans) { <li><a asp-controller="Plans" asp-action="Show" asp-route-id="@p.Id">@Fmt.Month(p.Year, p.Month)</a><span class="badge-status s-@p.Status.ToString().ToLower()">@p.Status</span></li> }</ul>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="panel h-100">
+            <div class="small-label mb-2">Monthly reports</div>
+            <p><a asp-controller="Reports" asp-action="Student" asp-route-studentId="@s.Id">Open this month's report</a></p>
+            <ul class="list-plain">@foreach (var r in Model.Reports) { <li><a asp-controller="Reports" asp-action="Student" asp-route-studentId="@s.Id" asp-route-year="@r.Year" asp-route-month="@r.Month">@Fmt.Month(r.Year, r.Month)</a><span class="badge-status s-@r.Status.ToString().ToLower()">@r.Status</span></li> }</ul>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,23 @@
+@model List<TutorSummary>
+@{
+    ViewData["Title"] = "Tutor summary";
+    int year = ViewBag.Year; int month = ViewBag.Month;
+    var prev = new DateOnly(year, month, 1).AddMonths(-1);
+    var next = new DateOnly(year, month, 1).AddMonths(1);
+}
+<header class="page-head"><h1>Tutor summary: @Fmt.Month(year, month)</h1><p class="page-sub">Classes held, hours and the amount due for each tutor.</p></header>
+<div class="d-flex flex-wrap gap-2 mb-3 no-print">
+    <a class="btn btn-outline-secondary" asp-route-year="@prev.Year" asp-route-month="@prev.Month">Previous month</a>
+    <a class="btn btn-outline-secondary" asp-route-year="@next.Year" asp-route-month="@next.Month">Next month</a>
+    <a class="btn btn-primary" asp-action="Csv" asp-route-year="@year" asp-route-month="@month"><i class="bi bi-download" aria-hidden="true"></i> Download CSV</a>
+</div>
+<div class="table-card table-responsive"><table class="table align-middle">
+    <thead><tr><th>Tutor</th><th class="text-end">Students</th><th class="text-end">Held</th><th class="text-end">Not held</th><th class="text-end">Hours</th><th class="text-end">No feedback</th><th class="text-end">Amount</th></tr></thead>
+    <tbody>
+    @foreach (var t in Model)
+    {
+        <tr><td><a asp-controller="Tutors" asp-action="Details" asp-route-id="@t.TutorId">@t.TutorName</a></td><td class="text-end">@t.StudentsTaught</td><td class="text-end">@t.SessionsHeld</td><td class="text-end">@t.SessionsNotHeld</td><td class="text-end">@t.Hours</td><td class="text-end">@t.FeedbackMissing</td><td class="text-end">@t.Amount.ToString("₦#,##0.00")</td></tr>
+    }
+    </tbody>
+    <tfoot><tr><th>Total</th><th></th><th class="text-end">@Model.Sum(t => t.SessionsHeld)</th><th class="text-end">@Model.Sum(t => t.SessionsNotHeld)</th><th class="text-end">@Model.Sum(t => t.Hours)</th><th></th><th class="text-end">@Model.Sum(t => t.Amount).ToString("₦#,##0.00")</th></tr></tfoot>
+</table></div>

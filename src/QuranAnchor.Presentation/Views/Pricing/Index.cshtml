@@ -1,0 +1,44 @@
+@model PricingViewModel
+@{ ViewData["Title"] = "Pricing"; }
+<header class="page-head"><h1>Pricing</h1><p class="page-sub">The monthly portal fee, and what a tutor earns for each class length.</p></header>
+
+<section class="section">
+    <h2>Portal fee per month</h2>
+    <form asp-action="SavePrices" method="post" class="panel">
+        @foreach (var p in Model.Prices)
+        {
+            <div class="rate-row">
+                <strong style="width:3rem">@p.Currency</strong>
+                <input type="number" step="0.01" min="0" name="price_@p.Currency" value="@p.Amount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" class="form-control" style="max-width:10rem" />
+                <div class="form-check"><input type="checkbox" class="form-check-input" id="active_@p.Currency" name="active_@p.Currency" value="true" checked="@p.IsActive" /><input type="hidden" name="active_@p.Currency" value="false" /><label class="form-check-label" for="active_@p.Currency">Offered</label></div>
+            </div>
+        }
+        <button class="btn btn-primary mt-2" type="submit">Save prices</button>
+        <div class="form-text">Check that USD and GBP collection is switched on in your Paystack account.</div>
+    </form>
+</section>
+
+<section class="section">
+    <h2>Tutor pay per class</h2>
+    <div class="panel">
+        @foreach (var r in Model.Rates)
+        {
+            <div class="rate-row">
+                <strong style="width:6rem">@r.DurationMinutes minutes</strong>
+                <form asp-action="SaveRate" method="post" class="d-flex gap-2">
+                    <input type="hidden" name="id" value="@r.Id" />
+                    <input type="number" step="0.01" min="0" name="amount" value="@r.Amount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" class="form-control" style="max-width:10rem" />
+                    <button class="btn btn-outline-secondary btn-sm">Save</button>
+                </form>
+                <form asp-action="DeleteRate" method="post" onsubmit="return confirm('Remove this rate?');"><input type="hidden" name="id" value="@r.Id" /><button class="btn btn-outline-danger btn-sm">Remove</button></form>
+            </div>
+        }
+        <hr />
+        <form asp-action="AddRate" method="post" class="rate-row">
+            <input type="number" name="duration" class="form-control" style="max-width:9rem" placeholder="Minutes" required />
+            <input type="number" step="0.01" min="0" name="amount" class="form-control" style="max-width:10rem" placeholder="Amount" required />
+            <button class="btn btn-outline-secondary">Add a class length</button>
+        </form>
+        <div class="form-text">The same rates apply to every tutor. A change applies to classes held from now on; past classes keep what they earned.</div>
+    </div>
+</section>

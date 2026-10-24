@@ -1,0 +1,8 @@
+@model StudentFormViewModel
+@{ ViewData["Title"] = "Edit student"; ViewData["IsEdit"] = true; }
+<header class="page-head"><h1>Edit student</h1><p class="page-sub">The tutor is changed with Replace tutor. A new sessions-per-month number starts next month.</p></header>
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post" novalidate>
+    <partial name="_StudentForm" model="Model" />
+    <button type="submit" class="btn btn-primary btn-lg">Save</button>
+    <a class="btn btn-link" asp-action="Details" asp-route-id="@Model.Id">Cancel</a>
+</form>

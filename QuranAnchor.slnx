@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="src/QuranAnchor.Domain/QuranAnchor.Domain.csproj" />
+  <Project Path="src/QuranAnchor.Application/QuranAnchor.Application.csproj" />
+  <Project Path="src/QuranAnchor.Infrastructure/QuranAnchor.Infrastructure.csproj" />
+  <Project Path="src/QuranAnchor.Presentation/QuranAnchor.Presentation.csproj" />
+</Solution>

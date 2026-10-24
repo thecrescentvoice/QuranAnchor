@@ -1,0 +1,36 @@
+@inject QuranAnchor.Application.Abstractions.ISettingsService Settings
+@{
+    var b = await Settings.GetBrandingAsync();
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <partial name="_Head" model="b" />
+</head>
+<body class="auth-body">
+    <main class="auth-shell">
+        <div class="auth-brand">
+            @if (!string.IsNullOrEmpty(b.LogoPath))
+            {
+                <img src="@b.LogoPath" alt="" class="auth-logo" />
+            }
+            else
+            {
+                <span class="mark mark-lg">@b.IdPrefix<span class="dot">.</span></span>
+            }
+            <span class="auth-name">@b.AcademyName</span>
+            @if (!string.IsNullOrWhiteSpace(b.Tagline))
+            {
+                <span class="auth-tagline">@b.Tagline</span>
+            }
+        </div>
+
+        <section class="auth-card">
+            @RenderBody()
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+</body>
+</html>

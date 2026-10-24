@@ -1,0 +1,21 @@
+@model ConsentViewModel
+@{ Layout = "_AuthLayout"; ViewData["Title"] = "Privacy notice"; }
+<h1 class="auth-title">Privacy notice</h1>
+<p class="auth-sub">Please read this and agree to continue.</p>
+<div class="small mb-3" style="max-height:18rem;overflow:auto;border:1px solid var(--qa-line);border-radius:.5rem;padding:.75rem">
+    <p><strong>What we keep.</strong> The student's name, the parent's name, email and phone, the country and time zone, class records (attendance, lessons, feedback, plans and reports), and the portal fee payments.</p>
+    <p><strong>Who can see it.</strong> The student's own tutor, the supervisor and the admins of the academy, and you as the parent. We do not share it with anyone else.</p>
+    <p><strong>Payments.</strong> The portal fee is paid through Paystack. We do not store card details.</p>
+    <p><strong>Children.</strong> By continuing you confirm that you are the parent or guardian of the student, or an adult student, and that you agree to this notice.</p>
+    <p><strong>Your choices.</strong> You can ask the supervisor to correct or delete your records at any time.</p>
+</div>
+<form asp-action="Consent" method="post" novalidate>
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+    <div class="form-check mb-3">
+        <input asp-for="Accepted" class="form-check-input" />
+        <label asp-for="Accepted" class="form-check-label">I have read the notice and I agree.</label>
+        <span asp-validation-for="Accepted" class="field-error"></span>
+    </div>
+    <button type="submit" class="btn btn-primary btn-lg w-100">Continue</button>
+</form>
+<div class="auth-links"><form asp-action="Logout" method="post" class="d-inline"><button type="submit" class="btn btn-link p-0">Sign out</button></form></div>
