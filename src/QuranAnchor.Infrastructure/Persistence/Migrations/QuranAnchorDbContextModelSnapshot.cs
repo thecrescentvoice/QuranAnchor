@@ -18,7 +18,7 @@ namespace QuranAnchor.Infrastructure.Persistence.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .UseCollation("utf8mb4_unicode_ci")
-                .HasAnnotation("ProductVersion", "10.0.13")
+                .HasAnnotation("ProductVersion", "10.0.14")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
@@ -175,7 +175,30 @@ namespace QuranAnchor.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("varchar(200)");
 
+                    b.Property<string>("FlyerKind")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("varchar(10)");
+
+                    b.Property<string>("FlyerName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("varchar(150)");
+
+                    b.Property<string>("FlyerPath")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("varchar(300)");
+
                     b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("UpdatedBy")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("varchar(200)");
@@ -271,6 +294,57 @@ namespace QuranAnchor.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("BreakDays");
+                });
+
+            modelBuilder.Entity("QuranAnchor.Domain.Entities.Certificate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("varchar(40)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<bool>("IsRevoked")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("IssuedByName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<Guid?>("IssuedByUserId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateOnly>("IssuedOn")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("StudentId");
+
+                    b.ToTable("Certificates");
                 });
 
             modelBuilder.Entity("QuranAnchor.Domain.Entities.ClassSchedule", b =>
@@ -373,6 +447,90 @@ namespace QuranAnchor.Infrastructure.Persistence.Migrations
                     b.ToTable("Sessions");
                 });
 
+            modelBuilder.Entity("QuranAnchor.Domain.Entities.Enquiry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Country")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("varchar(80)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)");
+
+                    b.Property<string>("ParentName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("varchar(40)");
+
+                    b.Property<string>("PreferredTimes")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("StudentAge")
+                        .HasColumnType("int");
+
+                    b.Property<string>("StudentName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<Guid?>("SupervisorId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("varchar(60)");
+
+                    b.Property<string>("TrialMeetingLink")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<DateTime?>("TrialStartUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid?>("TrialTutorId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.ToTable("Enquiries");
+                });
+
             modelBuilder.Entity("QuranAnchor.Domain.Entities.IdCounter", b =>
                 {
                     b.Property<string>("Key")
@@ -387,34 +545,191 @@ namespace QuranAnchor.Infrastructure.Persistence.Migrations
                     b.ToTable("IdCounters");
                 });
 
+            modelBuilder.Entity("QuranAnchor.Domain.Entities.Invoice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("varchar(3)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("varchar(300)");
+
+                    b.Property<DateOnly>("DueDate")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("IsCancelled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("varchar(40)");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Number")
+                        .IsUnique();
+
+                    b.HasIndex("StudentId");
+
+                    b.ToTable("Invoices");
+                });
+
+            modelBuilder.Entity("QuranAnchor.Domain.Entities.InvoicePayment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("InvoiceId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("varchar(60)");
+
+                    b.Property<DateOnly>("PaidOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("RecordedBy")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvoiceId");
+
+                    b.ToTable("InvoicePayments");
+                });
+
+            modelBuilder.Entity("QuranAnchor.Domain.Entities.Meeting", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Agenda")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("varchar(4000)");
+
+                    b.Property<bool>("AllTutors")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsCancelled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("MeetingLink")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("varchar(4000)");
+
+                    b.Property<DateTime>("StartUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid?>("SupervisorId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("varchar(60)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StartUtc");
+
+                    b.ToTable("Meetings");
+                });
+
+            modelBuilder.Entity("QuranAnchor.Domain.Entities.MeetingInvitee", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("MeetingId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("TutorId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TutorId");
+
+                    b.HasIndex("MeetingId", "TutorId")
+                        .IsUnique();
+
+                    b.ToTable("MeetingInvitees");
+                });
+
             modelBuilder.Entity("QuranAnchor.Domain.Entities.MonthlyPlan", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
-                    b.Property<string>("ClassFormat")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("varchar(500)");
-
-                    b.Property<string>("DailyTilawahFocus")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("varchar(2000)");
-
-                    b.Property<string>("Goal")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("varchar(500)");
-
                     b.Property<int>("Month")
                         .HasColumnType("int");
-
-                    b.Property<string>("MonthGoals")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("varchar(2000)");
 
                     b.Property<string>("ParentNotes")
                         .IsRequired()
@@ -559,41 +874,32 @@ namespace QuranAnchor.Infrastructure.Persistence.Migrations
                     b.ToTable("Payments");
                 });
 
-            modelBuilder.Entity("QuranAnchor.Domain.Entities.PlanRow", b =>
+            modelBuilder.Entity("QuranAnchor.Domain.Entities.PlanGoal", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
-                    b.Property<string>("Activity")
-                        .IsRequired()
-                        .HasMaxLength(600)
-                        .HasColumnType("varchar(600)");
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasMaxLength(600)
-                        .HasColumnType("varchar(600)");
-
-                    b.Property<string>("Murajaah")
-                        .IsRequired()
-                        .HasMaxLength(600)
-                        .HasColumnType("varchar(600)");
-
                     b.Property<Guid>("PlanId")
                         .HasColumnType("char(36)");
 
-                    b.Property<int>("SessionFrom")
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<int>("Track")
                         .HasColumnType("int");
 
-                    b.Property<int>("SessionTo")
+                    b.Property<int>("Week")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PlanId");
+                    b.HasIndex("PlanId", "Week", "Track")
+                        .IsUnique();
 
-                    b.ToTable("PlanRows");
+                    b.ToTable("PlanGoals");
                 });
 
             modelBuilder.Entity("QuranAnchor.Domain.Entities.PortalPrice", b =>
@@ -851,6 +1157,17 @@ namespace QuranAnchor.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
+                    b.Property<decimal>("ClassFeeAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<string>("ClassFeeCurrency")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("varchar(3)")
+                        .HasDefaultValue("NGN");
+
                     b.Property<string>("Country")
                         .IsRequired()
                         .HasMaxLength(80)
@@ -915,6 +1232,9 @@ namespace QuranAnchor.Infrastructure.Persistence.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("varchar(40)");
 
+                    b.Property<Guid?>("SupervisorId")
+                        .HasColumnType("char(36)");
+
                     b.Property<string>("TimeZoneId")
                         .IsRequired()
                         .HasMaxLength(60)
@@ -966,6 +1286,36 @@ namespace QuranAnchor.Infrastructure.Persistence.Migrations
                     b.ToTable("TutorAssignments");
                 });
 
+            modelBuilder.Entity("QuranAnchor.Domain.Entities.TutorAvailability", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("int");
+
+                    b.Property<TimeOnly>("EndTime")
+                        .HasColumnType("time(6)");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<TimeOnly>("StartTime")
+                        .HasColumnType("time(6)");
+
+                    b.Property<Guid>("TutorId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TutorId");
+
+                    b.ToTable("Availability");
+                });
+
             modelBuilder.Entity("QuranAnchor.Domain.Entities.TutorProfile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -993,6 +1343,9 @@ namespace QuranAnchor.Infrastructure.Persistence.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<Guid?>("SupervisorId")
+                        .HasColumnType("char(36)");
+
                     b.Property<string>("TimeZoneId")
                         .IsRequired()
                         .HasMaxLength(60)
@@ -1015,6 +1368,45 @@ namespace QuranAnchor.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("Tutors");
+                });
+
+            modelBuilder.Entity("QuranAnchor.Domain.Entities.TutorRating", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Comment")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Stars")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("TutorId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TutorId");
+
+                    b.HasIndex("StudentId", "Year", "Month")
+                        .IsUnique();
+
+                    b.ToTable("TutorRatings");
                 });
 
             modelBuilder.Entity("QuranAnchor.Infrastructure.Identity.ApplicationUser", b =>
@@ -1156,6 +1548,17 @@ namespace QuranAnchor.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("QuranAnchor.Domain.Entities.Certificate", b =>
+                {
+                    b.HasOne("QuranAnchor.Domain.Entities.StudentProfile", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Student");
+                });
+
             modelBuilder.Entity("QuranAnchor.Domain.Entities.ClassSchedule", b =>
                 {
                     b.HasOne("QuranAnchor.Domain.Entities.StudentProfile", "Student")
@@ -1202,6 +1605,47 @@ namespace QuranAnchor.Infrastructure.Persistence.Migrations
                     b.Navigation("Tutor");
                 });
 
+            modelBuilder.Entity("QuranAnchor.Domain.Entities.Invoice", b =>
+                {
+                    b.HasOne("QuranAnchor.Domain.Entities.StudentProfile", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("QuranAnchor.Domain.Entities.InvoicePayment", b =>
+                {
+                    b.HasOne("QuranAnchor.Domain.Entities.Invoice", "Invoice")
+                        .WithMany("Payments")
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Invoice");
+                });
+
+            modelBuilder.Entity("QuranAnchor.Domain.Entities.MeetingInvitee", b =>
+                {
+                    b.HasOne("QuranAnchor.Domain.Entities.Meeting", "Meeting")
+                        .WithMany("Invitees")
+                        .HasForeignKey("MeetingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("QuranAnchor.Domain.Entities.TutorProfile", "Tutor")
+                        .WithMany()
+                        .HasForeignKey("TutorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Meeting");
+
+                    b.Navigation("Tutor");
+                });
+
             modelBuilder.Entity("QuranAnchor.Domain.Entities.MonthlyPlan", b =>
                 {
                     b.HasOne("QuranAnchor.Domain.Entities.StudentProfile", "Student")
@@ -1243,10 +1687,10 @@ namespace QuranAnchor.Infrastructure.Persistence.Migrations
                     b.Navigation("Student");
                 });
 
-            modelBuilder.Entity("QuranAnchor.Domain.Entities.PlanRow", b =>
+            modelBuilder.Entity("QuranAnchor.Domain.Entities.PlanGoal", b =>
                 {
                     b.HasOne("QuranAnchor.Domain.Entities.MonthlyPlan", "Plan")
-                        .WithMany("Rows")
+                        .WithMany("Goals")
                         .HasForeignKey("PlanId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1316,14 +1760,54 @@ namespace QuranAnchor.Infrastructure.Persistence.Migrations
                     b.Navigation("Tutor");
                 });
 
+            modelBuilder.Entity("QuranAnchor.Domain.Entities.TutorAvailability", b =>
+                {
+                    b.HasOne("QuranAnchor.Domain.Entities.TutorProfile", "Tutor")
+                        .WithMany()
+                        .HasForeignKey("TutorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tutor");
+                });
+
+            modelBuilder.Entity("QuranAnchor.Domain.Entities.TutorRating", b =>
+                {
+                    b.HasOne("QuranAnchor.Domain.Entities.StudentProfile", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("QuranAnchor.Domain.Entities.TutorProfile", "Tutor")
+                        .WithMany()
+                        .HasForeignKey("TutorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Student");
+
+                    b.Navigation("Tutor");
+                });
+
             modelBuilder.Entity("QuranAnchor.Domain.Entities.ClassSession", b =>
                 {
                     b.Navigation("Feedback");
                 });
 
+            modelBuilder.Entity("QuranAnchor.Domain.Entities.Invoice", b =>
+                {
+                    b.Navigation("Payments");
+                });
+
+            modelBuilder.Entity("QuranAnchor.Domain.Entities.Meeting", b =>
+                {
+                    b.Navigation("Invitees");
+                });
+
             modelBuilder.Entity("QuranAnchor.Domain.Entities.MonthlyPlan", b =>
                 {
-                    b.Navigation("Rows");
+                    b.Navigation("Goals");
                 });
 #pragma warning restore 612, 618
         }

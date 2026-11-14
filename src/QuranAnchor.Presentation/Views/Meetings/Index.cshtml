@@ -1,0 +1,46 @@
+@model List<Meeting>
+@{
+    ViewData["Title"] = "Meetings";
+    var upcoming = (List<Meeting>)ViewBag.Upcoming;
+    string zone = ViewBag.Zone; bool manager = ViewBag.Manager;
+}
+<header class="page-head d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div><h1>@(manager ? "Tutor meetings" : "Meetings")</h1><p class="page-sub">Times are shown in @TimeHelper.City(zone) time.</p></div>
+    @if (manager) { <a class="btn btn-primary" asp-action="Create"><i class="bi bi-plus-lg" aria-hidden="true"></i> New meeting</a> }
+</header>
+
+<section class="section">
+    <h2>Upcoming</h2>
+    <div class="panel">
+        @if (upcoming.Count == 0) { <p class="muted mb-0">No upcoming meetings.</p> }
+        <ul class="list-plain">
+            @foreach (var m in upcoming)
+            {
+                <li><span><strong>@m.Title</strong> · @Fmt.Local(m.StartUtc, zone) · @m.DurationMinutes min@(manager ? (m.AllTutors ? " · all tutors" : $" · {m.Invitees.Count} tutor(s)") : "")</span>
+                    <span class="d-flex gap-2 align-items-center">
+                        <a asp-action="Details" asp-route-id="@m.Id">Details</a>
+                        @if (!string.IsNullOrEmpty(m.MeetingLink)) { <a class="btn btn-primary btn-sm" href="@m.MeetingLink" target="_blank" rel="noopener">Join</a> }
+                    </span></li>
+            }
+        </ul>
+    </div>
+</section>
+
+<section class="section">
+    <h2>Earlier</h2>
+    @if (Model.Count == 0) { <p class="muted">Nothing yet.</p> }
+    else
+    {
+        <div class="table-card table-responsive"><table class="table align-middle">
+            <thead><tr><th>When</th><th>Title</th><th>Status</th></tr></thead>
+            <tbody>
+            @foreach (var m in Model)
+            {
+                <tr><td class="text-nowrap">@Fmt.Local(m.StartUtc, zone)</td><td><a asp-action="Details" asp-route-id="@m.Id">@m.Title</a></td>
+                    <td>@if (m.IsCancelled) { <span class="badge-status s-cancelled">Cancelled</span> } else { <span class="badge-status s-completed">Held</span> }</td></tr>
+            }
+            </tbody>
+        </table></div>
+    }
+</section>
+<partial name="_Pager" model="(PageInfo)ViewBag.PageInfo" />

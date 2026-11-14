@@ -70,6 +70,9 @@ public class HomeController(
                 var summary = (await reports.TutorSummariesAsync(day.Year, day.Month, tutor.Id)).FirstOrDefault();
                 model.MonthAmount = summary?.Amount ?? 0;
                 model.MonthHeld = summary?.SessionsHeld ?? 0;
+                model.Meetings = await db.Meetings.AsNoTracking()
+                    .Where(m => !m.IsCancelled && m.StartUtc >= now.AddHours(-2) && ((m.AllTutors && (m.SupervisorId == null || m.SupervisorId == tutor.SupervisorId)) || m.Invitees.Any(i => i.TutorId == tutor.Id)))
+                    .OrderBy(m => m.StartUtc).Take(3).ToListAsync();
                 model.RequestsForMe = await db.RescheduleRequests.AsNoTracking().Include(r => r.Session).ThenInclude(s => s!.Student)
                     .Where(r => r.Status == RequestStatus.Pending && r.Session!.TutorId == tutor.Id && !r.RequestedByTutor).ToListAsync();
             }
@@ -81,6 +84,7 @@ public class HomeController(
             model.PendingRequests = await db.RescheduleRequests.AsNoTracking().Include(r => r.Session).ThenInclude(s => s!.Student)
                 .Where(r => r.Status == RequestStatus.Pending).OrderBy(r => r.CreatedAtUtc).Take(20).ToListAsync();
 
+            model.NewEnquiries = me.Can(Permissions.ManageEnquiries) ? await db.Enquiries.CountAsync(e => e.Status == EnquiryStatus.New) : 0;
             var active = await db.Students.AsNoTracking().Where(s => s.Status == AccountStatus.Active).ToListAsync();
             model.OverdueFees = active.Where(s => FeeRules.StateOf(s, rules) is FeeState.Overdue or FeeState.Locked).Take(20).ToList();
             foreach (var s in active)

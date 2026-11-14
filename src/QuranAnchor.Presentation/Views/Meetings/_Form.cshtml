@@ -1,0 +1,30 @@
+@model MeetingFormViewModel
+@{
+    var tutors = (List<TutorProfile>)ViewBag.Tutors;
+    var zones = (List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.Zones;
+}
+<div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+<div class="form-grid mb-3">
+    <div><label asp-for="Title" class="form-label"></label><input asp-for="Title" class="form-control" /><span asp-validation-for="Title" class="field-error"></span></div>
+    <div><label asp-for="When" class="form-label"></label><input asp-for="When" type="datetime-local" class="form-control" /><span asp-validation-for="When" class="field-error"></span></div>
+    <div><label asp-for="TimeZoneId" class="form-label"></label><select asp-for="TimeZoneId" asp-items="zones" class="form-select"></select></div>
+    <div><label asp-for="DurationMinutes" class="form-label"></label><input asp-for="DurationMinutes" type="number" class="form-control" /><span asp-validation-for="DurationMinutes" class="field-error"></span></div>
+</div>
+<div class="mb-3"><label asp-for="MeetingLink" class="form-label"></label><input asp-for="MeetingLink" class="form-control" placeholder="https://meet.google.com/..." /><span asp-validation-for="MeetingLink" class="field-error"></span></div>
+<div class="mb-3"><label asp-for="Agenda" class="form-label"></label><textarea asp-for="Agenda" class="form-control" rows="4"></textarea></div>
+
+<fieldset class="mb-3">
+    <legend class="h6">Who is invited</legend>
+    <div class="form-check mb-2"><input asp-for="AllTutors" class="form-check-input" id="allTutors" /><label asp-for="AllTutors" class="form-check-label"></label></div>
+    <div id="pickTutors" class="panel">
+        <div class="small-label mb-2">Or choose tutors</div>
+        <div class="d-flex flex-wrap gap-3">
+            @foreach (var t in tutors)
+            {
+                <div class="form-check"><input class="form-check-input" type="checkbox" name="SelectedTutorIds" value="@t.Id" id="tutor-@t.Id" checked="@Model.SelectedTutorIds.Contains(t.Id)" /><label class="form-check-label" for="tutor-@t.Id">@t.FullName</label></div>
+            }
+        </div>
+        <span asp-validation-for="SelectedTutorIds" class="field-error"></span>
+    </div>
+</fieldset>

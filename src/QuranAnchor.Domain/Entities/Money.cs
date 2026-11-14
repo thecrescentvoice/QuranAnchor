@@ -46,4 +46,12 @@ public class Announcement
     public AnnouncementAudience Audience { get; set; } = AnnouncementAudience.Everyone;
     public string CreatedBy { get; set; } = string.Empty;
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAtUtc { get; set; }
+    public string UpdatedBy { get; set; } = string.Empty;
+
+    /// <summary>An optional flyer: an image (JPG, PNG, WebP) or a PDF, stored under /uploads/flyers.</summary>
+    public string FlyerPath { get; set; } = string.Empty;
+    public string FlyerName { get; set; } = string.Empty;
+    /// <summary>"image", "pdf" or empty.</summary>
+    public string FlyerKind { get; set; } = string.Empty;
 }

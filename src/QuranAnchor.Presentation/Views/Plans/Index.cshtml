@@ -1,19 +1,91 @@
-@model List<MonthlyPlan>
-@inject QuranAnchor.Presentation.Services.CurrentUser Me
-@{ ViewData["Title"] = "Plans"; }
-<header class="page-head"><h1>Monthly plans</h1><p class="page-sub">@(Me.IsStudent ? "Published plans." : "Most recent plans. To write a new one, open the student and choose Write or edit this month's plan.")</p></header>
-@if (Model.Count == 0) { <p class="empty-note">No plans yet.</p> }
+@model PlanGridViewModel
+@{
+    ViewData["Title"] = "Monthly plans";
+    var tracks = new[] { (PlanTrack.Hifz, "Hifz"), (PlanTrack.Qiraah, "Qira’ah"), (PlanTrack.Murajaah, "Murāja’ah"), (PlanTrack.Tajweed, "Tajweed") };
+    var monthText = new DateTime(Model.Year, Model.Month, 1).ToString("MMMM yyyy");
+}
+<header class="page-head d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div><h1>Monthly plans: @monthText</h1><p class="page-sub">One row per student. Choose a goal for each week, or type your own. “Not Applicable” means nothing is set for that track.</p></div>
+    <a class="btn btn-outline-secondary btn-sm" asp-action="History">All plans</a>
+</header>
+
+<form method="get" class="d-flex flex-wrap gap-2 mb-3 no-print">
+    <input type="hidden" name="studentId" value="@Model.OnlyStudentId" />
+    <select name="month" class="form-select" style="max-width:11rem" aria-label="Month">
+        @for (var mm = 1; mm <= 12; mm++) { <option value="@mm" selected="@(mm == Model.Month)">@(new DateTime(2000, mm, 1).ToString("MMMM"))</option> }
+    </select>
+    <input type="number" name="year" value="@Model.Year" class="form-control" style="max-width:7rem" aria-label="Year" />
+    <button class="btn btn-outline-secondary" type="submit">Show</button>
+    <button class="btn btn-outline-secondary" type="submit" name="copyLast" value="true" title="Fill empty rows with last month's goals">Copy from last month</button>
+</form>
+
+@if (Model.CopiedFromLastMonth) { <div class="banner banner-warn">Last month’s goals were filled in for students without a plan yet. Nothing is saved until you press Save.</div> }
+
+@if (Model.Rows.Count == 0)
+{
+    <p class="empty-note"><i class="bi bi-people" aria-hidden="true"></i> There are no students to plan for.</p>
+}
 else
 {
-    <div class="table-card table-responsive"><table class="table align-middle">
-        <thead><tr><th>Month</th><th>Student</th><th>Status</th><th></th></tr></thead>
-        <tbody>
-        @foreach (var p in Model)
-        {
-            <tr><td>@Fmt.Month(p.Year, p.Month)</td><td>@p.Student?.FullName</td>
-                <td><span class="badge-status s-@p.Status.ToString().ToLower()">@p.Status</span></td>
-                <td class="text-end"><a asp-action="Show" asp-route-id="@p.Id">Open</a>@if (!Me.IsStudent) { <text> · </text><a asp-action="Edit" asp-route-studentId="@p.StudentId" asp-route-year="@p.Year" asp-route-month="@p.Month">Edit</a> }</td></tr>
-        }
-        </tbody>
-    </table></div>
+    foreach (var (track, _) in tracks)
+    {
+        <datalist id="dl-@((int)track)">
+            @foreach (var option in Model.Options[track]) { <option value="@option"></option> }
+        </datalist>
+    }
+
+    <form asp-action="Save" method="post">
+        <input type="hidden" name="year" value="@Model.Year" /><input type="hidden" name="month" value="@Model.Month" /><input type="hidden" name="studentId" value="@Model.OnlyStudentId" />
+
+        <div class="plan-grid-wrap">
+            <table class="plan-grid">
+                <thead>
+                    <tr>
+                        <th rowspan="2" class="sticky-col">Student</th>
+                        @for (var week = 1; week <= 4; week++) { <th colspan="4" class="week-head week-@week">Week @week</th> }
+                    </tr>
+                    <tr>
+                        @for (var week = 1; week <= 4; week++) { foreach (var (_, label) in tracks) { <th>@label</th> } }
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var row in Model.Rows)
+                {
+                    <tr>
+                        <th class="sticky-col">
+                            <div class="fw-semibold">@row.Student.FullName</div>
+                            <div class="small muted">@(Model.ShowTutor ? row.Student.Tutor?.FullName + " · " : "")@(row.Plan is null ? "no plan yet" : row.Plan.Status.ToString())</div>
+                            @if (row.Plan is not null) { <a class="small" asp-action="Show" asp-route-id="@row.Plan.Id">Preview</a> <span class="muted small">·</span> <a class="small" asp-action="Pdf" asp-route-id="@row.Plan.Id">PDF</a> }
+                        </th>
+                        @for (var week = 1; week <= 4; week++)
+                        {
+                            foreach (var (track, label) in tracks)
+                            {
+                                var key = week + "_" + (int)track;
+                                <td><input class="form-control form-control-sm goal-input" list="dl-@((int)track)" name="g_@(row.Student.Id)_@(week)_@((int)track)" value="@row.Values[key]" aria-label="@(row.Student.FullName + ", week " + week + ", " + label)" maxlength="200" autocomplete="off" /></td>
+                            }
+                        }
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mt-3 no-print">
+            <button class="btn btn-primary" type="submit" name="mode" value="draft"><i class="bi bi-save" aria-hidden="true"></i> Save as drafts</button>
+            <button class="btn btn-outline-secondary" type="submit" name="mode" value="publish"><i class="bi bi-send-check" aria-hidden="true"></i> Save and publish for parents</button>
+            <a class="btn btn-outline-secondary" asp-action="DownloadAll" asp-route-year="@Model.Year" asp-route-month="@Model.Month" asp-route-studentId="@Model.OnlyStudentId"><i class="bi bi-file-earmark-zip" aria-hidden="true"></i> Download all PDFs</a>
+        </div>
+        <p class="form-text mt-2">“Download all PDFs” gives one PDF for each student, in a zip file, from the plans you have saved. Parents only see a plan after it is published.</p>
+    </form>
+}
+
+@section Scripts {
+    <script>
+        // Show every suggestion when a cell is opened: the old value moves into the placeholder until you choose.
+        document.querySelectorAll('.goal-input').forEach(function (input) {
+            input.addEventListener('focus', function () { this.dataset.prev = this.value; this.placeholder = this.value; this.value = ''; });
+            input.addEventListener('blur', function () { if (this.value.trim() === '') { this.value = this.dataset.prev || 'Not Applicable'; } this.placeholder = ''; });
+        });
+    </script>
 }

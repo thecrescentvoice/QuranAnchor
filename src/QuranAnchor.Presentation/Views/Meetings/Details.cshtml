@@ -1,0 +1,36 @@
+@model Meeting
+@{
+    ViewData["Title"] = Model.Title;
+    string zone = ViewBag.Zone; bool manager = ViewBag.Manager;
+    var everyone = ViewBag.Everyone as List<TutorProfile>;
+}
+<header class="page-head">
+    <h1>@Model.Title @if (Model.IsCancelled) { <span class="badge-status s-cancelled">Cancelled</span> }</h1>
+    <p class="page-sub">@Fmt.Local(Model.StartUtc, zone) (@TimeHelper.City(zone) time) · @Model.DurationMinutes minutes@(zone != Model.TimeZoneId ? $" · {TimeHelper.Format(Model.StartUtc, Model.TimeZoneId)} in {TimeHelper.City(Model.TimeZoneId)}" : "")</p>
+</header>
+
+<div class="d-flex flex-wrap gap-2 section no-print">
+    @if (!string.IsNullOrEmpty(Model.MeetingLink) && !Model.IsCancelled) { <a class="btn btn-primary" href="@Model.MeetingLink" target="_blank" rel="noopener"><i class="bi bi-camera-video" aria-hidden="true"></i> Join the meeting</a> }
+    @if (!Model.IsCancelled) { <a class="btn btn-outline-secondary" asp-action="Ics" asp-route-id="@Model.Id"><i class="bi bi-calendar-plus" aria-hidden="true"></i> Add to my calendar</a> }
+    @if (manager)
+    {
+        <a class="btn btn-outline-secondary" asp-action="Edit" asp-route-id="@Model.Id"><i class="bi bi-pencil" aria-hidden="true"></i> Edit</a>
+        @if (!Model.IsCancelled) { <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" onsubmit="return confirm('Cancel this meeting? The tutors will be emailed.');"><button class="btn btn-outline-danger">Cancel meeting</button></form> }
+        <form asp-action="Delete" asp-route-id="@Model.Id" method="post" onsubmit="return confirm('Delete this meeting for good?');"><button class="btn btn-outline-danger">Delete</button></form>
+    }
+    <a class="btn btn-link" asp-action="Index">All meetings</a>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.Agenda)) { <section class="section"><h2>Agenda</h2><div class="panel" style="white-space:pre-line">@Fmt.Linkify(Model.Agenda)</div></section> }
+@if (!string.IsNullOrWhiteSpace(Model.Notes)) { <section class="section"><h2>Notes and minutes</h2><div class="panel" style="white-space:pre-line">@Fmt.Linkify(Model.Notes)</div></section> }
+
+@if (manager)
+{
+    <section class="section">
+        <h2>Invited</h2>
+        <div class="panel">
+            @if (Model.AllTutors) { <p class="mb-1"><strong>Every active tutor</strong></p><p class="muted mb-0">@(everyone is null ? "" : string.Join(", ", everyone.Select(t => t.FullName)))</p> }
+            else { <p class="mb-0">@string.Join(", ", Model.Invitees.Select(i => i.Tutor?.FullName))</p> }
+        </div>
+    </section>
+}

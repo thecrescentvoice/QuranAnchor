@@ -1,0 +1,20 @@
+@model AnnouncementFormViewModel
+<div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+<div class="mb-3"><label asp-for="Title" class="form-label"></label><input asp-for="Title" class="form-control" /><span asp-validation-for="Title" class="field-error"></span></div>
+<div class="mb-3"><label asp-for="Body" class="form-label"></label><textarea asp-for="Body" class="form-control" rows="5"></textarea><span asp-validation-for="Body" class="field-error"></span></div>
+<div class="mb-3" style="max-width:16rem"><label asp-for="Audience" class="form-label"></label><select asp-for="Audience" asp-items="Html.GetEnumSelectList<AnnouncementAudience>()" class="form-select"></select></div>
+
+<div class="mb-3">
+    <label asp-for="Flyer" class="form-label"></label>
+    @if (!string.IsNullOrEmpty(Model.ExistingFlyerPath))
+    {
+        <div class="flyer-current mb-2">
+            @if (Model.ExistingFlyerKind == "image") { <img src="@Model.ExistingFlyerPath" alt="Current flyer" /> }
+            else { <span><i class="bi bi-file-earmark-pdf-fill" aria-hidden="true"></i> @Model.ExistingFlyerName</span> }
+            <div class="form-check mt-2"><input asp-for="RemoveFlyer" class="form-check-input" /><label asp-for="RemoveFlyer" class="form-check-label"></label></div>
+            <div class="form-text">Choose a new file below to replace it.</div>
+        </div>
+    }
+    <input asp-for="Flyer" type="file" class="form-control" accept=".jpg,.jpeg,.png,.webp,.pdf" />
+    <span asp-validation-for="Flyer" class="field-error"></span>
+</div>

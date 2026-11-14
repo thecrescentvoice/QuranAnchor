@@ -1,0 +1,52 @@
+@{
+    ViewData["Title"] = "Exports";
+    var now = DateTime.UtcNow;
+}
+<header class="page-head"><h1>Excel exports</h1><p class="page-sub">Download the academy's records as Excel files. Each download is written to the audit log.</p></header>
+
+<div class="row g-3 section">
+    <div class="col-md-6"><div class="panel h-100">
+        <div class="d-flex align-items-center gap-2 mb-2"><span class="stat-icon"><i class="bi bi-people"></i></span><h2 class="h5 mb-0" style="text-transform:none;letter-spacing:0;color:var(--qa-ink)">Students</h2></div>
+        <p class="muted">Everyone: level, status, tutor, parent contact, fees.</p>
+        <a class="btn btn-primary" asp-action="Students"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Download</a>
+    </div></div>
+
+    <div class="col-md-6"><div class="panel h-100">
+        <div class="d-flex align-items-center gap-2 mb-2"><span class="stat-icon tone-green"><i class="bi bi-credit-card"></i></span><h2 class="h5 mb-0" style="text-transform:none;letter-spacing:0;color:var(--qa-ink)">Portal fee payments</h2></div>
+        <form asp-action="Payments" method="get" class="rate-row">
+            <input type="date" name="from" value="@now.AddDays(-30).ToString("yyyy-MM-dd")" class="form-control" style="max-width:11rem" required />
+            <span class="muted">to</span>
+            <input type="date" name="to" value="@now.ToString("yyyy-MM-dd")" class="form-control" style="max-width:11rem" required />
+            <button class="btn btn-primary"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Download</button>
+        </form>
+    </div></div>
+
+    <div class="col-md-6"><div class="panel h-100">
+        <div class="d-flex align-items-center gap-2 mb-2"><span class="stat-icon tone-cyan"><i class="bi bi-calendar3"></i></span><h2 class="h5 mb-0" style="text-transform:none;letter-spacing:0;color:var(--qa-ink)">Classes and attendance</h2></div>
+        <form asp-action="Classes" method="get" class="rate-row">
+            <input type="number" name="month" value="@now.Month" min="1" max="12" class="form-control" style="max-width:6rem" aria-label="Month" required />
+            <input type="number" name="year" value="@now.Year" class="form-control" style="max-width:8rem" aria-label="Year" required />
+            <button class="btn btn-primary"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Download</button>
+        </form>
+        <div class="form-text">Month number and year.</div>
+    </div></div>
+
+    <div class="col-md-6"><div class="panel h-100">
+        <div class="d-flex align-items-center gap-2 mb-2"><span class="stat-icon tone-amber"><i class="bi bi-cash-coin"></i></span><h2 class="h5 mb-0" style="text-transform:none;letter-spacing:0;color:var(--qa-ink)">Tutor summary</h2></div>
+        <form asp-action="TutorSummary" method="get" class="rate-row">
+            <input type="number" name="month" value="@now.Month" min="1" max="12" class="form-control" style="max-width:6rem" aria-label="Month" required />
+            <input type="number" name="year" value="@now.Year" class="form-control" style="max-width:8rem" aria-label="Year" required />
+            <button class="btn btn-primary"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Download</button>
+        </form>
+    </div></div>
+
+    <div class="col-md-6"><div class="panel h-100">
+        <div class="d-flex align-items-center gap-2 mb-2"><span class="stat-icon tone-magenta"><i class="bi bi-receipt"></i></span><h2 class="h5 mb-0" style="text-transform:none;letter-spacing:0;color:var(--qa-ink)">Class fee invoices</h2></div>
+        <form asp-action="Invoices" method="get" class="rate-row">
+            <input type="number" name="month" placeholder="Month" min="1" max="12" class="form-control" style="max-width:6rem" aria-label="Month (leave empty for all)" />
+            <input type="number" name="year" placeholder="Year" class="form-control" style="max-width:8rem" aria-label="Year (leave empty for all)" />
+            <button class="btn btn-primary"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Download</button>
+        </form>
+        <div class="form-text">Leave month and year empty for every invoice.</div>
+    </div></div>
+</div>

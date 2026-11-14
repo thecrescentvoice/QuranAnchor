@@ -1,0 +1,29 @@
+@model Certificate?
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Check a certificate";
+    var brandName = ((QuranAnchor.Application.Models.BrandingSettings)ViewBag.Brand).AcademyName;
+    var parts = Model?.Student?.FullName?.Split(' ', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
+    var shortName = parts.Length == 0 ? "" : parts[0] + (parts.Length > 1 ? " " + parts[^1][..1] + "." : "");
+}
+@if (Model is null)
+{
+    <h1 class="auth-title"><i class="bi bi-x-octagon text-danger" aria-hidden="true"></i> Not found</h1>
+    <p class="auth-sub">We could not find a certificate with that number. Check that it was typed correctly.</p>
+}
+else if (Model.IsRevoked)
+{
+    <h1 class="auth-title"><i class="bi bi-exclamation-triangle text-warning" aria-hidden="true"></i> Withdrawn</h1>
+    <p class="auth-sub">This certificate was issued by @brandName but has since been withdrawn.</p>
+}
+else
+{
+    <h1 class="auth-title"><i class="bi bi-patch-check-fill" style="color:var(--qa-yes)" aria-hidden="true"></i> Genuine certificate</h1>
+    <p class="auth-sub">Issued by @brandName.</p>
+    <dl class="kv">
+        <dt>Awarded to</dt><dd>@shortName</dd>
+        <dt>For</dt><dd>@Model.Title</dd>
+        <dt>Date</dt><dd>@Model.IssuedOn.ToString("d MMMM yyyy")</dd>
+        <dt>Number</dt><dd>@Model.Code</dd>
+    </dl>
+}

@@ -72,21 +72,18 @@ public class FeedbackController(
         return View(model: await feedback.BuildWhatsAppTextAsync(sessionId));
     }
 
-    /// <summary>If the monthly plan has a row covering this class number, its content becomes the learning objective.</summary>
+    /// <summary>The learning objective comes from the week's goals in the monthly plan (the tracks that are not "Not Applicable").</summary>
     private async Task<string> ObjectiveFromPlanAsync(ClassSession s)
     {
-        var plan = await db.Plans.AsNoTracking().Include(p => p.Rows).FirstOrDefaultAsync(p => p.StudentId == s.StudentId && p.Year == s.StartUtc.Year && p.Month == s.StartUtc.Month);
-        if (plan is null)
-        {
-            var local = TimeHelper.ToLocal(s.StartUtc, s.Student!.TimeZoneId);
-            plan = await db.Plans.AsNoTracking().Include(p => p.Rows).FirstOrDefaultAsync(p => p.StudentId == s.StudentId && p.Year == local.Year && p.Month == local.Month);
-        }
+        var local = TimeHelper.ToLocal(s.StartUtc, s.Student!.TimeZoneId);
+        var plan = await db.Plans.AsNoTracking().Include(p => p.Goals)
+            .FirstOrDefaultAsync(p => p.StudentId == s.StudentId && p.Year == local.Year && p.Month == local.Month);
         if (plan is null) return string.Empty;
 
-        var order = await db.Sessions.AsNoTracking().Where(x => x.PackageId == s.PackageId && x.Status != SessionStatus.Rescheduled && x.Status != SessionStatus.Cancelled)
-            .OrderBy(x => x.StartUtc).Select(x => x.Id).ToListAsync();
-        var number = order.IndexOf(s.Id) + 1;
-        var row = plan.Rows.FirstOrDefault(r => number >= r.SessionFrom && number <= r.SessionTo);
-        return row?.Content ?? string.Empty;
+        var week = Math.Min(4, (local.Day - 1) / 7 + 1);
+        string Name(PlanTrack t) => t switch { PlanTrack.Hifz => "Hifz", PlanTrack.Qiraah => "Qira’ah", PlanTrack.Murajaah => "Murāja’ah", _ => "Tajweed" };
+        var parts = plan.Goals.Where(g => g.Week == week && !string.IsNullOrWhiteSpace(g.Text) && !g.Text.Equals("Not Applicable", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(g => g.Track).Select(g => $"{Name(g.Track)}: {g.Text}");
+        return string.Join(" · ", parts);
     }
 }

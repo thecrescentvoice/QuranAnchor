@@ -91,7 +91,7 @@ public class FeedbackService(
             var body = await notify.WrapAsync("A class did not hold",
                 $"The class of {WebUtility.HtmlEncode(session.Student.FullName)} with {WebUtility.HtmlEncode(session.Tutor.FullName)} on {when} did not hold.",
                 $"Reason: {reason}. {WebUtility.HtmlEncode(note)}");
-            await notify.SendToSupervisorsAsync("A class did not hold", body, ct);
+            await notify.SendToSupervisorAsync(session.Tutor.SupervisorId, "A class did not hold", body, ct);
         }
         return (true, null);
     }

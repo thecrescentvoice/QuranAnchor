@@ -14,6 +14,10 @@ public class SlotInput
 public class StudentFormViewModel
 {
     public Guid? Id { get; set; }
+    /// <summary>Set when the student is made from an enquiry, so the enquiry can be marked as enrolled.</summary>
+    public Guid? EnquiryId { get; set; }
+    [Display(Name = "Supervisor in charge")]
+    public Guid? SupervisorId { get; set; }
 
     [Required(ErrorMessage = "Enter the student's name.")][StringLength(200)][Display(Name = "Student's full name")]
     public string FullName { get; set; } = string.Empty;
@@ -46,6 +50,12 @@ public class StudentFormViewModel
     [Range(0, 60, ErrorMessage = "Enter a number from 0 to 60.")][Display(Name = "Sessions for the rest of this month")]
     public int SessionsThisMonth { get; set; } = 8;
 
+    [Range(0, 100000000, ErrorMessage = "Enter an amount, or 0 if there is no fixed class fee.")][Display(Name = "Monthly class fee")]
+    public decimal ClassFeeAmount { get; set; }
+
+    [Display(Name = "Class fee currency")]
+    public string ClassFeeCurrency { get; set; } = "NGN";
+
     [Url(ErrorMessage = "Enter a full link starting with https://")][StringLength(500)][Display(Name = "Google Meet link")]
     public string MeetingLink { get; set; } = string.Empty;
 
@@ -65,6 +75,9 @@ public class TutorFormViewModel
 
     [Required][Display(Name = "Time zone")]
     public string TimeZoneId { get; set; } = "Africa/Lagos";
+
+    [Display(Name = "Supervisor in charge")]
+    public Guid? SupervisorId { get; set; }
 }
 
 public class StaffFormViewModel

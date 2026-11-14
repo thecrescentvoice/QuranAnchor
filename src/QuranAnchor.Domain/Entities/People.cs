@@ -20,11 +20,16 @@ public class StudentProfile
     public DateTime? MeetingLinkChangedAtUtc { get; set; }
     public string PreferredCurrency { get; set; } = "NGN";
     public bool IsFeeExempt { get; set; }
+    /// <summary>What the family pays for classes each month (class fees are separate from the portal fee).</summary>
+    public decimal ClassFeeAmount { get; set; }
+    public string ClassFeeCurrency { get; set; } = "NGN";
     public DateTime? PaidUntilUtc { get; set; }
     public AccountStatus Status { get; set; } = AccountStatus.Active;
     public DateOnly? HoldUntil { get; set; }
     public Guid? TutorId { get; set; }
     public TutorProfile? Tutor { get; set; }
+    /// <summary>The supervisor (a staff user) responsible for this student. A supervisor only sees their own students.</summary>
+    public Guid? SupervisorId { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 
@@ -38,6 +43,8 @@ public class TutorProfile
     public string Phone { get; set; } = string.Empty;
     public string TimeZoneId { get; set; } = "Africa/Lagos";
     public AccountStatus Status { get; set; } = AccountStatus.Active;
+    /// <summary>The supervisor (a staff user) responsible for this tutor.</summary>
+    public Guid? SupervisorId { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 

@@ -11,5 +11,6 @@ public static class SettingKeys
     public const string PrimaryColor = "branding.primary_color";
     public const string AccentColor = "branding.accent_color";
     public const string LogoPath = "branding.logo_path";
+    public const string FeeInstructions = "branding.fee_instructions";
     public const string SystemJson = "system.json";
 }

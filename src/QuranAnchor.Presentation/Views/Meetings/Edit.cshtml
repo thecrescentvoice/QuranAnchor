@@ -1,0 +1,16 @@
+@model MeetingFormViewModel
+@{ ViewData["Title"] = "Edit meeting"; }
+<header class="page-head"><h1>Edit meeting</h1><p class="page-sub">If you change the time, length or link, the tutors are emailed the new details. You can also write the notes or minutes here after the meeting.</p></header>
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post" novalidate>
+    <partial name="_Form" model="Model" />
+    <div class="mb-4"><label asp-for="Notes" class="form-label"></label><textarea asp-for="Notes" class="form-control" rows="5"></textarea></div>
+    <button class="btn btn-primary btn-lg" type="submit">Save changes</button>
+    <a class="btn btn-link" asp-action="Details" asp-route-id="@Model.Id">Cancel</a>
+</form>
+@section Scripts {
+    <script>
+        var all = document.getElementById('allTutors'), pick = document.getElementById('pickTutors');
+        function sync() { pick.style.opacity = all.checked ? '.45' : '1'; pick.querySelectorAll('input').forEach(function (i) { i.disabled = all.checked; }); }
+        all.addEventListener('change', sync); sync();
+    </script>
+}

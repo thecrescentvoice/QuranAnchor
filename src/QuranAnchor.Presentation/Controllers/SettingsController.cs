@@ -80,7 +80,8 @@ public class SettingsController(
             IdPrefix = model.IdPrefix.Trim(),
             PrimaryColor = model.PrimaryColor,
             AccentColor = model.AccentColor,
-            LogoPath = logoPath
+            LogoPath = logoPath,
+            FeeInstructions = model.FeeInstructions?.Trim() ?? string.Empty
         };
 
         await settings.SaveBrandingAsync(updated, User.Identity?.Name);

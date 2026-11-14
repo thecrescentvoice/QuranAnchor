@@ -1,0 +1,49 @@
+@model List<QuranAnchor.Infrastructure.Identity.ApplicationUser>
+@{
+    ViewData["Title"] = "Supervisors";
+    var tutors = (Dictionary<Guid, int>)ViewBag.Tutors;
+    var students = (Dictionary<Guid, int>)ViewBag.Students;
+    var enquiries = (Dictionary<Guid, int>)ViewBag.Enquiries;
+    int N(Dictionary<Guid, int> d, Guid id) => d.TryGetValue(id, out var n) ? n : 0;
+    var unassignedTutors = N(tutors, Guid.Empty);
+    var unassignedStudents = N(students, Guid.Empty);
+    var options = (List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.Options;
+}
+<header class="page-head d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div><h1>Supervisors</h1><p class="page-sub">Each supervisor only sees the tutors and students in their care. Admins and the Super Admin see everyone.</p></div>
+    <a class="btn btn-outline-secondary" asp-controller="Staff" asp-action="Create">Add a supervisor</a>
+</header>
+
+@if (unassignedTutors + unassignedStudents > 0)
+{
+    <div class="banner banner-warn">
+        <strong>@unassignedTutors tutor(s) and @unassignedStudents student(s) have no supervisor.</strong> No supervisor can see them until you assign them. Open a tutor or a student to choose a supervisor, or hand them all to one supervisor below.
+    </div>
+}
+
+<div class="table-card table-responsive"><table class="table align-middle">
+    <thead><tr><th>Supervisor</th><th>Status</th><th class="text-end">Tutors</th><th class="text-end">Students</th><th class="text-end">Enquiries taken</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var s in Model)
+    {
+        <tr><td>@s.FullName<div class="small muted">@s.Email</div></td>
+            <td><span class="badge-status @(s.IsActive ? "s-completed" : "s-cancelled")">@(s.IsActive ? "Active" : "Deactivated")</span></td>
+            <td class="text-end">@N(tutors, s.Id)</td><td class="text-end">@N(students, s.Id)</td><td class="text-end">@N(enquiries, s.Id)</td>
+            <td class="text-end">
+                @if (N(tutors, s.Id) + N(students, s.Id) + N(enquiries, s.Id) > 0)
+                {
+                    <form asp-action="MoveAll" method="post" class="rate-row justify-content-end mb-1" onsubmit="return confirm('Move everyone under this supervisor to the chosen supervisor?');">
+                        <input type="hidden" name="fromSupervisorId" value="@s.Id" />
+                        <select name="toSupervisorId" class="form-select form-select-sm" style="max-width:12rem" required><option value="">Move all to...</option>@foreach (var o in options.Where(o => o.Value != s.Id.ToString())) { <option value="@o.Value">@o.Text</option> }</select>
+                        <button class="btn btn-outline-secondary btn-sm" type="submit">Move all</button>
+                    </form>
+                }
+                @if (s.IsActive && unassignedTutors + unassignedStudents > 0)
+                {
+                    <form asp-action="AssignUnassigned" method="post" onsubmit="return confirm('Give every tutor and student who has no supervisor to @s.FullName?');"><input type="hidden" name="supervisorId" value="@s.Id" /><button class="btn btn-outline-secondary btn-sm">Give them the unassigned</button></form>
+                }
+            </td></tr>
+    }
+    @if (Model.Count == 0) { <tr><td colspan="6" class="muted">There are no supervisors yet. Add one first.</td></tr> }
+    </tbody>
+</table></div>

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -6,6 +7,7 @@ using QuestPDF.Infrastructure;
 using QuranAnchor.Application.Abstractions;
 using QuranAnchor.Application.Models;
 using QuranAnchor.Domain.Entities;
+using QuranAnchor.Domain.Enums;
 using QuranAnchor.Infrastructure.Persistence;
 
 namespace QuranAnchor.Infrastructure.Services;
@@ -15,7 +17,8 @@ public class PdfService(
     QuranAnchorDbContext db,
     IReportService reports,
     ISettingsService settings,
-    IHostEnvironment env) : IPdfService
+    IHostEnvironment env,
+    IConfiguration config) : IPdfService
 {
     private const string Violet = "#8B5CFF";
     private const string Cyan = "#5CE1E6";
@@ -26,7 +29,17 @@ public class PdfService(
     private const string Tint = "#F1F3FA";
 
     private static bool _fontsReady;
+    private static bool _arabicReady;
     private static readonly object FontLock = new();
+
+    /// <summary>The bismillah in Arabic when the Amiri font is installed. Without the font, a plain English line is printed instead.</summary>
+    private static void Bismillah(IContainer container, float size)
+    {
+        if (_arabicReady)
+            container.AlignCenter().Text("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ").FontFamily("Amiri").FontSize(size);
+        else
+            container.AlignCenter().Text("In the name of Allah, the Most Gracious, the Most Merciful").Italic().FontSize(size / 2.4f);
+    }
 
     private void EnsureFonts()
     {
@@ -34,6 +47,8 @@ public class PdfService(
         {
             if (_fontsReady) return;
             QuestPDF.Settings.License = LicenseType.Community;
+            // A missing font must never stop a PDF from being made.
+            QuestPDF.Settings.ThrowOnMissingFontFamilies = false;
 
             // Put Amiri-Regular.ttf (free from Google Fonts) in wwwroot/fonts so the Arabic bismillah prints correctly.
             var path = Path.Combine(env.ContentRootPath, "wwwroot", "fonts", "Amiri-Regular.ttf");
@@ -41,6 +56,7 @@ public class PdfService(
             {
                 using var stream = File.OpenRead(path);
                 QuestPDF.Drawing.FontManager.RegisterFontFromStream(stream);
+                _arabicReady = true;
             }
             _fontsReady = true;
         }
@@ -87,98 +103,116 @@ public class PdfService(
 
     // ---------------- Monthly plan ----------------
 
+    private static readonly (PlanTrack Track, string Title)[] PlanColumns =
+    {
+        (PlanTrack.Hifz, "HIFZ GOAL"), (PlanTrack.Qiraah, "QIRA’AH GOAL"),
+        (PlanTrack.Murajaah, "MURAJAH GOAL"), (PlanTrack.Tajweed, "TAJWEED GOAL")
+    };
+
+    private static IContainer InfoCell(IContainer c) => c.BorderBottom(0.6f).BorderColor(Line).PaddingVertical(6);
+    private static IContainer GoalBox(IContainer c) => c.Border(0.6f).BorderColor(Line).Padding(8).AlignMiddle().AlignCenter();
+    private static IContainer GoalBoxTall(IContainer c) => c.Border(0.6f).BorderColor(Line).Padding(8).MinHeight(60).AlignMiddle().AlignCenter();
+
+    private async Task<byte[]?> LogoBytesAsync(QuranAnchor.Application.Models.BrandingSettings brand, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(brand.LogoPath)) return null;
+        var clean = brand.LogoPath.Split('?')[0].TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+        var path = Path.Combine(env.ContentRootPath, "wwwroot", clean);
+        return File.Exists(path) ? await File.ReadAllBytesAsync(path, ct) : null;
+    }
+
     public async Task<byte[]> PlanPdfAsync(Guid planId, CancellationToken ct = default)
     {
         EnsureFonts();
-        var plan = await db.Plans.AsNoTracking().Include(p => p.Student).Include(p => p.Tutor).Include(p => p.Rows)
+        var plan = await db.Plans.AsNoTracking().Include(p => p.Student).Include(p => p.Tutor).Include(p => p.Goals)
             .FirstAsync(p => p.Id == planId, ct);
         var brand = await settings.GetBrandingAsync(ct);
+        var rules = await settings.GetSystemAsync(ct);
+        var logo = await LogoBytesAsync(brand, ct);
         var month = MonthName(plan.Year, plan.Month);
+
+        string Goal(int week, PlanTrack track)
+        {
+            var text = plan.Goals.FirstOrDefault(g => g.Week == week && g.Track == track)?.Text;
+            return string.IsNullOrWhiteSpace(text) ? "Not Applicable" : text;
+        }
 
         return Document.Create(doc =>
         {
             doc.Page(page =>
             {
                 page.Size(PageSizes.A4);
-                page.Margin(32);
-                page.DefaultTextStyle(t => t.FontSize(10).FontColor(Ink));
-                page.Header().Element(TopBand);
-                Footer(page, brand.AcademyName, "Monthly Learning Plan");
+                page.Margin(0);
+                page.DefaultTextStyle(t => t.FontColor(Ink).FontSize(11));
 
-                page.Content().PaddingTop(14).Column(col =>
+                page.Header().Column(h =>
                 {
-                    col.Spacing(6);
-                    col.Item().AlignCenter().Text("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ").FontFamily("Amiri").FontSize(18);
-                    col.Item().AlignCenter().Text("Monthly Learning Plan").FontSize(20).Bold();
-                    col.Item().AlignCenter().Text(brand.AcademyName).FontColor(Soft);
-
-                    col.Item().PaddingTop(8).Table(t =>
+                    h.Item().Background("#17262F").PaddingVertical(22).PaddingHorizontal(36).Row(row =>
                     {
-                        t.ColumnsDefinition(c => { c.RelativeColumn(); c.RelativeColumn(); });
-                        t.Cell().Element(BodyCell).Text($"Student: {plan.Student?.FullName} ({plan.Student?.StudentCode})");
-                        t.Cell().Element(BodyCell).Text($"Month: {month}");
-                        t.Cell().Element(BodyCell).Text($"Tutor: {plan.Tutor?.FullName}");
-                        t.Cell().Element(BodyCell).Text($"Level: {plan.Student?.Level}");
+                        row.RelativeItem().AlignMiddle().Column(c =>
+                        {
+                            if (logo is not null) c.Item().Height(46).Image(logo).FitArea();
+                            else c.Item().Text(brand.AcademyName).FontSize(18).Bold().FontColor("#FFFFFF");
+                        });
+                        row.RelativeItem().AlignMiddle().AlignRight().Text("MONTHLY PLAN").FontSize(30).Bold().FontColor("#FFFFFF");
+                    });
+                    h.Item().Element(TopBand);
+                });
+
+                page.Content().PaddingHorizontal(40).PaddingTop(18).Column(col =>
+                {
+                    col.Spacing(8);
+                    col.Item().Element(c => Bismillah(c, 26));
+
+                    col.Item().PaddingTop(6).Table(t =>
+                    {
+                        t.ColumnsDefinition(c => { c.ConstantColumn(70); c.RelativeColumn(); });
+                        t.Cell().Element(InfoCell).Text("Student").SemiBold().FontColor(Violet);
+                        t.Cell().Element(InfoCell).Text(": " + plan.Student?.FullName).SemiBold().FontColor(Violet);
+                        t.Cell().Element(InfoCell).Text("Month").SemiBold().FontColor(Violet);
+                        t.Cell().Element(InfoCell).Text(": " + month).SemiBold().FontColor(Violet);
                     });
 
-                    if (!string.IsNullOrWhiteSpace(plan.Goal))
+                    col.Item().PaddingTop(14).AlignCenter().Text("POST-CLASS EXPECTATIONS").FontSize(17).Bold();
+                    col.Item().Text("After each class:").SemiBold();
+                    var n = 1;
+                    foreach (var line in Lines(plan.PostClassExpectations))
+                        col.Item().PaddingLeft(10).Text($"{n++}. {line}");
+
+                    col.Item().PaddingTop(14).Table(t =>
                     {
-                        col.Item().PaddingTop(6).Background(Tint).Padding(8).Column(c =>
+                        t.ColumnsDefinition(c => { c.ConstantColumn(70); c.RelativeColumn(); c.RelativeColumn(); c.RelativeColumn(); c.RelativeColumn(); });
+                        t.Cell().ColumnSpan(5).Element(GoalBox).Text("MONTH GOAL").FontSize(16).Bold();
+                        t.Cell().Element(GoalBox).Text("WEEKS").Bold().FontSize(10);
+                        foreach (var (_, title) in PlanColumns) t.Cell().Element(GoalBox).Text(title).Bold().FontSize(10);
+                        for (var week = 1; week <= 4; week++)
                         {
-                            c.Item().Text("Goal for the month").SemiBold().FontColor(Violet);
-                            c.Item().Text(plan.Goal);
-                        });
-                    }
-
-                    Heading(col, "After every class, the student should");
-                    Bullets(col, Lines(plan.PostClassExpectations));
-
-                    Heading(col, "Goals for this month");
-                    Bullets(col, Lines(plan.MonthGoals), numbered: true);
-
-                    Heading(col, "Weekly plan");
-                    col.Item().Table(t =>
-                    {
-                        t.ColumnsDefinition(c => { c.ConstantColumn(55); c.RelativeColumn(2); c.RelativeColumn(2); c.RelativeColumn(2); });
-                        t.Header(h =>
-                        {
-                            h.Cell().Element(HeadCell).Text("Sessions");
-                            h.Cell().Element(HeadCell).Text("Content");
-                            h.Cell().Element(HeadCell).Text("Activity");
-                            h.Cell().Element(HeadCell).Text("Muraja'ah");
-                        });
-                        foreach (var row in plan.Rows.OrderBy(r => r.SessionFrom))
-                        {
-                            var label = row.SessionFrom == row.SessionTo ? $"{row.SessionFrom}" : $"{row.SessionFrom}–{row.SessionTo}";
-                            t.Cell().Element(BodyCell).Text(label);
-                            t.Cell().Element(BodyCell).Text(row.Content);
-                            t.Cell().Element(BodyCell).Text(row.Activity);
-                            t.Cell().Element(BodyCell).Text(row.Murajaah);
+                            t.Cell().Element(GoalBoxTall).Text($"WEEK {week}").Bold().FontColor(Magenta);
+                            foreach (var (track, _) in PlanColumns) t.Cell().Element(GoalBoxTall).Text(Goal(week, track)).SemiBold().FontSize(10);
                         }
                     });
-
-                    var tilawah = Lines(plan.DailyTilawahFocus);
-                    if (tilawah.Length > 0)
-                    {
-                        Heading(col, "Daily tilawah focus");
-                        Bullets(col, tilawah);
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(plan.ClassFormat))
-                    {
-                        Heading(col, "Class format");
-                        col.Item().Text(plan.ClassFormat);
-                    }
 
                     var notes = Lines(plan.ParentNotes);
                     if (notes.Length > 0)
                     {
-                        Heading(col, "Notes for parents");
-                        Bullets(col, notes);
+                        col.Item().PaddingTop(12).Text("Notes").Bold().FontSize(12);
+                        foreach (var note in notes) col.Item().PaddingLeft(10).Text("• " + note);
                     }
 
-                    Heading(col, "Monthly report");
-                    col.Item().Text("At the end of the month you will receive a report with attendance, goal progress, topics covered and the focus for next month.");
+                    col.Item().PaddingTop(16).Text("Monthly progress report:").Bold().FontSize(12);
+                    col.Item().Text(rules.PlanClosingNote);
+                    col.Item().PaddingTop(8).Text("May Allah bless our efforts, increase us in beneficial knowledge, and grant every student success in their Qur’an journey. Āmīn.").Bold();
+                    col.Item().PaddingTop(14).AlignCenter().Element(c =>
+                    {
+                        if (logo is not null) c.Height(44).Image(logo).FitArea();
+                        else c.Text(brand.AcademyName).FontSize(16).Bold().FontColor(Violet);
+                    });
+                });
+
+                page.Footer().PaddingHorizontal(40).PaddingBottom(14).AlignCenter().Text(t =>
+                {
+                    t.DefaultTextStyle(x => x.FontSize(8).FontColor(Soft));
+                    t.Span($"{brand.AcademyName} · Monthly plan · {plan.Student?.FullName} · {month}");
                 });
             });
         }).GeneratePdf();
@@ -298,6 +332,59 @@ public class PdfService(
                         Heading(col, "A note for parents");
                         col.Item().Text(remarks!.ParentNote);
                     }
+                });
+            });
+        }).GeneratePdf();
+    }
+
+
+    // ---------------- Certificate ----------------
+
+    public async Task<byte[]> CertificatePdfAsync(Guid certificateId, CancellationToken ct = default)
+    {
+        EnsureFonts();
+        var cert = await db.Certificates.AsNoTracking().Include(c => c.Student).FirstAsync(c => c.Id == certificateId, ct);
+        var brand = await settings.GetBrandingAsync(ct);
+        var verifyUrl = (config["App:BaseUrl"] ?? string.Empty).TrimEnd('/') + "/Certificates/Verify/" + cert.Code;
+
+        return Document.Create(doc =>
+        {
+            doc.Page(page =>
+            {
+                page.Size(PageSizes.A4.Landscape());
+                page.Margin(26);
+                page.DefaultTextStyle(t => t.FontColor(Ink));
+
+                page.Content().Border(3).BorderColor(Violet).Padding(4).Border(1).BorderColor(Cyan).Column(col =>
+                {
+                    col.Item().Element(TopBand);
+                    col.Item().PaddingTop(18).Element(c => Bismillah(c, 22));
+                    col.Item().PaddingTop(6).AlignCenter().Text("CERTIFICATE OF ACHIEVEMENT").FontSize(24).Bold().LetterSpacing(0.08f);
+                    col.Item().AlignCenter().Text(brand.AcademyName).FontSize(13).FontColor(Soft);
+
+                    col.Item().PaddingTop(20).AlignCenter().Text("This certificate is proudly presented to").FontSize(13).FontColor(Soft);
+                    col.Item().PaddingTop(6).AlignCenter().Text(cert.Student?.FullName ?? "").FontSize(34).Bold().FontColor(Violet);
+                    col.Item().PaddingTop(10).AlignCenter().Text("in recognition of").FontSize(13).FontColor(Soft);
+                    col.Item().PaddingTop(4).AlignCenter().Text(cert.Title).FontSize(20).SemiBold();
+                    if (!string.IsNullOrWhiteSpace(cert.Description))
+                        col.Item().PaddingTop(6).PaddingHorizontal(60).AlignCenter().Text(cert.Description).FontSize(12).FontColor(Soft);
+
+                    col.Item().PaddingTop(26).PaddingHorizontal(50).Row(row =>
+                    {
+                        row.RelativeItem().Column(c =>
+                        {
+                            c.Item().AlignCenter().Text(cert.IssuedOn.ToString("d MMMM yyyy")).FontSize(12);
+                            c.Item().PaddingTop(3).BorderTop(0.8f).BorderColor(Soft).AlignCenter().Text("Date").FontSize(10).FontColor(Soft);
+                        });
+                        row.ConstantItem(60);
+                        row.RelativeItem().Column(c =>
+                        {
+                            c.Item().AlignCenter().Text(cert.IssuedByName).FontSize(12);
+                            c.Item().PaddingTop(3).BorderTop(0.8f).BorderColor(Soft).AlignCenter().Text("Tutor").FontSize(10).FontColor(Soft);
+                        });
+                    });
+
+                    col.Item().PaddingTop(18).AlignCenter().Text($"Certificate no. {cert.Code}  ·  Check it at {verifyUrl}").FontSize(8.5f).FontColor(Soft);
                 });
             });
         }).GeneratePdf();

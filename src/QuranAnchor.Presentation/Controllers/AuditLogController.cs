@@ -25,6 +25,6 @@ public class AuditLogController(QuranAnchorDbContext db) : Controller
             .Take(PageSize)
             .ToListAsync();
 
-        return View(new AuditLogPageViewModel { Items = items, Page = page, TotalPages = totalPages });
+        return View(new AuditLogPageViewModel { Items = items, Page = page, TotalPages = totalPages, Total = total });
     }
 }

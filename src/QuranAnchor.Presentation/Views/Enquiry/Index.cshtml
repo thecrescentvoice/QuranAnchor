@@ -1,0 +1,30 @@
+@model EnquiryFormViewModel
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Book a trial class";
+    ViewData["Wide"] = true;
+    var zones = (IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.Zones;
+}
+<h1 class="auth-title">Book a trial class</h1>
+<p class="auth-sub">Tell us about the student and when you are free. We will contact you to arrange a free trial.</p>
+
+<form asp-action="Index" method="post" novalidate>
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+    <div style="position:absolute;left:-9999px" aria-hidden="true"><label>Leave this empty <input asp-for="Website" tabindex="-1" autocomplete="off" /></label></div>
+
+    <div class="form-grid mb-3">
+        <div><label asp-for="ParentName" class="form-label"></label><input asp-for="ParentName" class="form-control" /><span asp-validation-for="ParentName" class="field-error"></span></div>
+        <div><label asp-for="Email" class="form-label"></label><input asp-for="Email" type="email" class="form-control" /><span asp-validation-for="Email" class="field-error"></span></div>
+        <div><label asp-for="Phone" class="form-label"></label><input asp-for="Phone" class="form-control" /><span asp-validation-for="Phone" class="field-error"></span></div>
+        <div><label asp-for="StudentName" class="form-label"></label><input asp-for="StudentName" class="form-control" /><span asp-validation-for="StudentName" class="field-error"></span></div>
+        <div><label asp-for="StudentAge" class="form-label"></label><input asp-for="StudentAge" type="number" class="form-control" /><span asp-validation-for="StudentAge" class="field-error"></span></div>
+        <div><label asp-for="Level" class="form-label"></label><select asp-for="Level" asp-items="Html.GetEnumSelectList<StudentLevel>()" class="form-select"></select></div>
+        <div><label asp-for="Country" class="form-label"></label><input asp-for="Country" class="form-control" /><span asp-validation-for="Country" class="field-error"></span></div>
+        <div><label asp-for="TimeZoneId" class="form-label"></label><select asp-for="TimeZoneId" asp-items="zones" class="form-select"></select></div>
+    </div>
+    <div class="mb-3"><label asp-for="PreferredTimes" class="form-label"></label><input asp-for="PreferredTimes" class="form-control" placeholder="For example weekdays after 6 PM, or Saturday mornings" /></div>
+    <div class="mb-3"><label asp-for="Message" class="form-label"></label><textarea asp-for="Message" class="form-control" rows="3"></textarea></div>
+    <div class="form-check mb-3"><input asp-for="Agree" class="form-check-input" /><label asp-for="Agree" class="form-check-label"></label><span asp-validation-for="Agree" class="field-error"></span></div>
+    <button type="submit" class="btn btn-primary btn-lg w-100">Send my enquiry</button>
+</form>
+<div class="auth-links"><a asp-controller="Account" asp-action="Login">Already a student? Sign in</a></div>

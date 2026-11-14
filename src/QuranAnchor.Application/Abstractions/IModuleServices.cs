@@ -8,6 +8,7 @@ public interface IIdGenerator
 {
     Task<string> NextStudentCodeAsync(CancellationToken ct = default);
     Task<string> NextTutorCodeAsync(CancellationToken ct = default);
+    Task<string> NextInvoiceNumberAsync(CancellationToken ct = default);
 }
 
 public interface ISchedulingService
@@ -49,6 +50,7 @@ public interface IPdfService
 {
     Task<byte[]> PlanPdfAsync(Guid planId, CancellationToken ct = default);
     Task<byte[]> ReportPdfAsync(Guid studentId, int year, int month, CancellationToken ct = default);
+    Task<byte[]> CertificatePdfAsync(Guid certificateId, CancellationToken ct = default);
 }
 
 public interface IPaymentService
@@ -64,6 +66,8 @@ public interface INotificationService
     Task SendToParentAsync(StudentProfile student, string subject, string bodyHtml, CancellationToken ct = default);
     Task SendToTutorAsync(TutorProfile tutor, string subject, string bodyHtml, CancellationToken ct = default);
     Task SendToSupervisorsAsync(string subject, string bodyHtml, CancellationToken ct = default);
+    /// <summary>Emails one supervisor. When no supervisor is known, every active supervisor is emailed.</summary>
+    Task SendToSupervisorAsync(Guid? supervisorId, string subject, string bodyHtml, CancellationToken ct = default);
     /// <summary>Wraps plain paragraphs in the academy's email look.</summary>
     Task<string> WrapAsync(string heading, params string[] paragraphs);
 }
@@ -71,18 +75,26 @@ public interface INotificationService
 public sealed record CreateStudentRequest(
     string FullName, string ParentName, string ParentEmail, string Phone, string Country, string TimeZoneId,
     StudentLevel Level, Guid? TutorId, int SessionsPerMonth, int SessionsThisMonth, string MeetingLink,
-    List<(DayOfWeek Day, TimeOnly Time, int Duration)> Slots);
+    List<(DayOfWeek Day, TimeOnly Time, int Duration)> Slots, Guid? SupervisorId = null);
 
 public sealed record CreatedAccount(bool Ok, string? Error, string? Code, string? TempPassword);
 
 public interface IAccountService
 {
     Task<CreatedAccount> CreateStudentAsync(CreateStudentRequest request, CancellationToken ct = default);
-    Task<CreatedAccount> CreateTutorAsync(string fullName, string email, string phone, string timeZoneId, CancellationToken ct = default);
+    Task<CreatedAccount> CreateTutorAsync(string fullName, string email, string phone, string timeZoneId, Guid? supervisorId = null, CancellationToken ct = default);
     Task<CreatedAccount> CreateStaffAsync(string fullName, string email, string role, string actorRole, CancellationToken ct = default);
     Task<(bool Ok, string? Error)> SetActiveAsync(Guid userId, bool active, string actorRole, CancellationToken ct = default);
     Task<(bool Ok, string? Error)> DeletePermanentlyAsync(Guid userId, CancellationToken ct = default);
     Task<(bool Ok, string? Error)> ReplaceTutorAsync(Guid leavingTutorId, Guid newTutorId, CancellationToken ct = default);
+    /// <summary>Moves one student to another tutor: their weekly times and upcoming classes move too, and the history is kept.</summary>
+    Task<(bool Ok, string? Error)> ChangeStudentTutorAsync(Guid studentId, Guid newTutorId, CancellationToken ct = default);
     Task<(bool Ok, string? Error)> RotateMeetLinkAsync(Guid studentId, string newLink, CancellationToken ct = default);
     Task<string> ResetTempPasswordAsync(Guid userId, CancellationToken ct = default);
+}
+
+/// <summary>Tells the data layer whose view applies. A signed-in supervisor only sees their own people; everyone else, and background jobs, see all.</summary>
+public interface ICurrentScope
+{
+    Guid? SupervisorId { get; }
 }

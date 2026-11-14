@@ -54,7 +54,8 @@ public class SettingsService(QuranAnchorDbContext db, IMemoryCache cache) : ISet
             IdPrefix = Required(SettingKeys.IdPrefix, defaults.IdPrefix),
             PrimaryColor = Color(SettingKeys.PrimaryColor, defaults.PrimaryColor),
             AccentColor = Color(SettingKeys.AccentColor, defaults.AccentColor),
-            LogoPath = Optional(SettingKeys.LogoPath, defaults.LogoPath)
+            LogoPath = Optional(SettingKeys.LogoPath, defaults.LogoPath),
+            FeeInstructions = Optional(SettingKeys.FeeInstructions, defaults.FeeInstructions)
         };
 
         cache.Set(BrandingCacheKey, branding, TimeSpan.FromMinutes(30));
@@ -72,6 +73,7 @@ public class SettingsService(QuranAnchorDbContext db, IMemoryCache cache) : ISet
         await Upsert(SettingKeys.PrimaryColor, branding.PrimaryColor, updatedBy, ct);
         await Upsert(SettingKeys.AccentColor, branding.AccentColor, updatedBy, ct);
         await Upsert(SettingKeys.LogoPath, branding.LogoPath, updatedBy, ct);
+        await Upsert(SettingKeys.FeeInstructions, branding.FeeInstructions, updatedBy, ct);
 
         await db.SaveChangesAsync(ct);
         cache.Remove(BrandingCacheKey);

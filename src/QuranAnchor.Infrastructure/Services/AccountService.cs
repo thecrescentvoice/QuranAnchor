@@ -78,7 +78,8 @@ public class AccountService(
             UserId = user.Id, StudentCode = code, FullName = request.FullName.Trim(), ParentName = request.ParentName.Trim(),
             ParentEmail = request.ParentEmail.Trim(), Phone = request.Phone.Trim(), Country = request.Country.Trim(),
             TimeZoneId = request.TimeZoneId, Level = request.Level, SessionsPerMonth = request.SessionsPerMonth,
-            MeetingLink = request.MeetingLink.Trim(), PaidUntilUtc = DateTime.UtcNow, TutorId = tutor?.Id
+            MeetingLink = request.MeetingLink.Trim(), PaidUntilUtc = DateTime.UtcNow, TutorId = tutor?.Id,
+            SupervisorId = tutor?.SupervisorId ?? request.SupervisorId
         };
         db.Students.Add(student);
         if (tutor is not null)
@@ -102,7 +103,7 @@ public class AccountService(
         return new(true, problems.Count > 0 ? string.Join(" ", problems) : null, code, temp);
     }
 
-    public async Task<CreatedAccount> CreateTutorAsync(string fullName, string email, string phone, string timeZoneId, CancellationToken ct = default)
+    public async Task<CreatedAccount> CreateTutorAsync(string fullName, string email, string phone, string timeZoneId, Guid? supervisorId = null, CancellationToken ct = default)
     {
         email = email.Trim();
         if (await users.FindByNameAsync(email) is not null) return new(false, "An account with this email already exists.", null, null);
@@ -118,7 +119,7 @@ public class AccountService(
         if (!created.Succeeded) return new(false, Errors(created), null, null);
         await users.AddToRoleAsync(user, Roles.Tutor);
 
-        db.Tutors.Add(new TutorProfile { UserId = user.Id, TutorCode = code, FullName = fullName.Trim(), Email = email, Phone = phone.Trim(), TimeZoneId = timeZoneId });
+        db.Tutors.Add(new TutorProfile { UserId = user.Id, TutorCode = code, FullName = fullName.Trim(), Email = email, Phone = phone.Trim(), TimeZoneId = timeZoneId, SupervisorId = supervisorId });
         await db.SaveChangesAsync(ct);
 
         await notify.SendToTutorAsync(new TutorProfile { Email = email }, "Your account is ready", await WelcomeBodyAsync(fullName, email, temp), ct);
@@ -218,6 +219,7 @@ public class AccountService(
             db.Schedules.RemoveRange(db.Schedules.Where(s => s.TutorId == tutor.Id));
             db.TutorAssignments.RemoveRange(db.TutorAssignments.Where(a => a.TutorId == tutor.Id));
             db.Plans.RemoveRange(db.Plans.Where(p => p.TutorId == tutor.Id));
+            db.TutorRatings.RemoveRange(db.TutorRatings.Where(r => r.TutorId == tutor.Id));
             foreach (var s in await db.Students.Where(s => s.TutorId == tutor.Id).ToListAsync(ct)) s.TutorId = null;
             await db.SaveChangesAsync(ct);
             db.Tutors.Remove(tutor);
@@ -263,6 +265,8 @@ public class AccountService(
             foreach (var open in await db.TutorAssignments.Where(a => a.StudentId == student.Id && a.EndedOn == null).ToListAsync(ct)) open.EndedOn = today;
             db.TutorAssignments.Add(new TutorAssignment { StudentId = student.Id, TutorId = incoming.Id, StartedOn = today });
             student.TutorId = incoming.Id;
+            // The student follows the new tutor's supervisor.
+            if (incoming.SupervisorId is not null) student.SupervisorId = incoming.SupervisorId;
         }
 
         foreach (var slot in await db.Schedules.Where(s => s.TutorId == leavingTutorId && (s.EffectiveTo == null || s.EffectiveTo >= today)).ToListAsync(ct)) slot.TutorId = incoming.Id;
@@ -272,6 +276,40 @@ public class AccountService(
         // The leaving tutor can no longer sign in. Their past records stay under their own name.
         var leavingUser = await users.FindByIdAsync(leaving.UserId.ToString());
         if (leavingUser is not null) await ApplyActiveAsync(leavingUser, false, ct);
+        return (true, null);
+    }
+
+    public async Task<(bool Ok, string? Error)> ChangeStudentTutorAsync(Guid studentId, Guid newTutorId, CancellationToken ct = default)
+    {
+        var student = await db.Students.FirstOrDefaultAsync(s => s.Id == studentId, ct);
+        var incoming = await db.Tutors.FirstOrDefaultAsync(t => t.Id == newTutorId, ct);
+        if (student is null || incoming is null) return (false, "Student or tutor not found.");
+        if (incoming.Status != AccountStatus.Active) return (false, "The new tutor must be active.");
+        if (student.TutorId == newTutorId) return (false, "That tutor already teaches this student.");
+
+        var now = DateTime.UtcNow;
+        var today = DateOnly.FromDateTime(now);
+        var future = await db.Sessions.Where(s => s.StudentId == studentId && s.Status == SessionStatus.Scheduled && s.StartUtc > now).ToListAsync(ct);
+
+        // The new tutor must be free at every upcoming class of this student.
+        var clashes = new List<string>();
+        foreach (var s in future)
+        {
+            var clash = await scheduling.FindConflictAsync(incoming.Id, s.StartUtc, s.DurationMinutes, null, ct);
+            if (clash is not null) clashes.Add(TimeHelper.Format(s.StartUtc, incoming.TimeZoneId));
+        }
+        if (clashes.Count > 0) return (false, "The new tutor is already busy at: " + string.Join("; ", clashes.Take(5)) + ". Nothing was changed.");
+
+        foreach (var open in await db.TutorAssignments.Where(a => a.StudentId == studentId && a.EndedOn == null).ToListAsync(ct)) open.EndedOn = today;
+        db.TutorAssignments.Add(new TutorAssignment { StudentId = studentId, TutorId = incoming.Id, StartedOn = today });
+
+        student.TutorId = incoming.Id;
+        // The student follows the new tutor's supervisor.
+        if (incoming.SupervisorId is not null) student.SupervisorId = incoming.SupervisorId;
+
+        foreach (var slot in await db.Schedules.Where(s => s.StudentId == studentId && (s.EffectiveTo == null || s.EffectiveTo >= today)).ToListAsync(ct)) slot.TutorId = incoming.Id;
+        foreach (var s in future) s.TutorId = incoming.Id;
+        await db.SaveChangesAsync(ct);
         return (true, null);
     }
 

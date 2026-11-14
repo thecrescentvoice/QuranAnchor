@@ -5,6 +5,7 @@
     var zones = (IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.Zones;
 }
 <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+<input type="hidden" asp-for="EnquiryId" />
 
 <fieldset class="section">
     <legend class="h5">Student and parent</legend>
@@ -31,6 +32,12 @@
         {
             <div><label asp-for="SessionsThisMonth" class="form-label"></label><input asp-for="SessionsThisMonth" type="number" class="form-control" /><div class="form-text">For a student who joins mid-month.</div></div>
         }
+        @if (ViewBag.Supervisors is List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> sups)
+        {
+            <div><label asp-for="SupervisorId" class="form-label"></label><select asp-for="SupervisorId" asp-items="sups" class="form-select"><option value="">Not assigned</option></select><div class="form-text">If you choose a tutor, the student follows that tutor's supervisor.</div></div>
+        }
+        <div><label asp-for="ClassFeeAmount" class="form-label"></label><input asp-for="ClassFeeAmount" type="number" step="0.01" min="0" class="form-control" /><span asp-validation-for="ClassFeeAmount" class="field-error"></span></div>
+        <div><label asp-for="ClassFeeCurrency" class="form-label"></label><select asp-for="ClassFeeCurrency" class="form-select"><option value="NGN">NGN (naira)</option><option value="USD">USD (dollars)</option><option value="GBP">GBP (pounds)</option></select></div>
         <div><label asp-for="MeetingLink" class="form-label"></label><input asp-for="MeetingLink" class="form-control" placeholder="https://meet.google.com/..." /><span asp-validation-for="MeetingLink" class="field-error"></span></div>
     </div>
 </fieldset>

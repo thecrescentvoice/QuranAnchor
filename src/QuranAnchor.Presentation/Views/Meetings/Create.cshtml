@@ -1,0 +1,15 @@
+@model MeetingFormViewModel
+@{ ViewData["Title"] = "New meeting"; }
+<header class="page-head"><h1>New meeting</h1><p class="page-sub">The invited tutors are emailed now, and reminded a day and an hour before.</p></header>
+<form asp-action="Create" method="post" novalidate>
+    <partial name="_Form" model="Model" />
+    <button class="btn btn-primary btn-lg" type="submit">Create meeting</button>
+    <a class="btn btn-link" asp-action="Index">Cancel</a>
+</form>
+@section Scripts {
+    <script>
+        var all = document.getElementById('allTutors'), pick = document.getElementById('pickTutors');
+        function sync() { pick.style.opacity = all.checked ? '.45' : '1'; pick.querySelectorAll('input').forEach(function (i) { i.disabled = all.checked; }); }
+        all.addEventListener('change', sync); sync();
+    </script>
+}

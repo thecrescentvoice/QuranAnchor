@@ -32,6 +32,17 @@ public class NotificationService(
         }
     }
 
+    public async Task SendToSupervisorAsync(Guid? supervisorId, string subject, string bodyHtml, CancellationToken ct = default)
+    {
+        if (supervisorId is null) { await SendToSupervisorsAsync(subject, bodyHtml, ct); return; }
+
+        var supervisor = await users.FindByIdAsync(supervisorId.Value.ToString());
+        if (supervisor is { IsActive: true } && !string.IsNullOrWhiteSpace(supervisor.Email))
+            await email.SendAsync(supervisor.Email, subject, bodyHtml, ct);
+        else
+            await SendToSupervisorsAsync(subject, bodyHtml, ct);
+    }
+
     public async Task<string> WrapAsync(string heading, params string[] paragraphs)
     {
         var b = await settings.GetBrandingAsync();

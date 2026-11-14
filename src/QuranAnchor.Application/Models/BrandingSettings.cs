@@ -17,4 +17,6 @@ public sealed record BrandingSettings
     public string PrimaryColor { get; init; } = "#5B3FD9";
     public string AccentColor { get; init; } = "#5CE1E6";
     public string LogoPath { get; init; } = "";
+    /// <summary>Shown to parents on invoices: where and how to pay class fees (for example the bank account).</summary>
+    public string FeeInstructions { get; init; } = "";
 }

@@ -6,6 +6,7 @@ using QuranAnchor.Application.Common;
 using QuranAnchor.Domain.Constants;
 using QuranAnchor.Domain.Enums;
 using QuranAnchor.Infrastructure.Persistence;
+using QuranAnchor.Presentation.Helpers;
 using QuranAnchor.Presentation.Services;
 
 namespace QuranAnchor.Presentation.Controllers;
@@ -74,9 +75,10 @@ public class PaymentsController(
     // ---------- Staff ----------
 
     [Authorize(Policy = Permissions.ViewPayments)]
-    public async Task<IActionResult> All()
+    public async Task<IActionResult> All(int page = 1)
     {
-        var list = await db.Payments.AsNoTracking().Include(p => p.Student).OrderByDescending(p => p.CreatedAtUtc).Take(150).ToListAsync();
+        var (list, info) = await db.Payments.AsNoTracking().Include(p => p.Student).OrderByDescending(p => p.CreatedAtUtc).PageAsync(page, 20);
+        ViewBag.PageInfo = info;
         return View(list);
     }
 

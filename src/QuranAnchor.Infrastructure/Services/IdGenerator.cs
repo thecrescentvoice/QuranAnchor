@@ -11,7 +11,9 @@ public class IdGenerator(QuranAnchorDbContext db, ISettingsService settings) : I
     public Task<string> NextStudentCodeAsync(CancellationToken ct = default) => NextAsync("STU", ct);
     public Task<string> NextTutorCodeAsync(CancellationToken ct = default) => NextAsync("TUT", ct);
 
-    private async Task<string> NextAsync(string kind, CancellationToken ct)
+    public Task<string> NextInvoiceNumberAsync(CancellationToken ct = default) => NextAsync("INV", ct, 5);
+
+    private async Task<string> NextAsync(string kind, CancellationToken ct, int width = 4)
     {
         var branding = await settings.GetBrandingAsync(ct);
 
@@ -24,6 +26,6 @@ public class IdGenerator(QuranAnchorDbContext db, ISettingsService settings) : I
 
         counter.LastNumber++;
         await db.SaveChangesAsync(ct);
-        return $"{branding.IdPrefix}-{kind}-{counter.LastNumber:D4}";
+        return $"{branding.IdPrefix}-{kind}-{counter.LastNumber.ToString().PadLeft(width, '0')}";
     }
 }

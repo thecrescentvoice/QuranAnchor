@@ -29,7 +29,13 @@ public static class RolePermissions
             Permissions.ViewPayments,
             Permissions.MarkFeePaid,
             Permissions.ViewAllEarnings,
-            Permissions.PostAnnouncements
+            Permissions.PostAnnouncements,
+            Permissions.IssueCertificates,
+            Permissions.ManageEnquiries,
+            Permissions.ViewRatings,
+            Permissions.ExportData,
+            Permissions.ManageInvoices,
+            Permissions.ManageMeetings
         },
 
         [Roles.Supervisor] = new HashSet<string>
@@ -47,10 +53,17 @@ public static class RolePermissions
             Permissions.ViewPayments,
             Permissions.MarkFeePaid,
             Permissions.ViewAllEarnings,
-            Permissions.PostAnnouncements
+            Permissions.PostAnnouncements,
+            Permissions.IssueCertificates,
+            Permissions.ManageEnquiries,
+            Permissions.ViewRatings,
+            Permissions.ExportData,
+            Permissions.ManageInvoices,
+            Permissions.ManageMeetings,
+            Permissions.AssignSupervisor
         },
 
-        [Roles.Tutor] = new HashSet<string>(),
+        [Roles.Tutor] = new HashSet<string> { Permissions.IssueCertificates },
         [Roles.Student] = new HashSet<string>()
     };
 

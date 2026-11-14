@@ -1,0 +1,24 @@
+@model List<TutorAvailability>
+@{ ViewData["Title"] = "My availability"; string zone = ViewBag.Zone; }
+<header class="page-head"><h1>My availability</h1><p class="page-sub">The weekly times you can teach, in @TimeHelper.City(zone) time. The supervisor uses this to place new students.</p></header>
+
+<form asp-action="Add" method="post" class="panel section">
+    <div class="rate-row">
+        <select name="day" class="form-select" style="max-width:11rem">@foreach (var d in Enum.GetValues<DayOfWeek>()) { <option value="@d">@d</option> }</select>
+        <label class="muted" for="start">from</label><input id="start" type="time" name="start" class="form-control" style="max-width:9rem" required />
+        <label class="muted" for="end">to</label><input id="end" type="time" name="end" class="form-control" style="max-width:9rem" required />
+        <input name="note" class="form-control" style="max-width:16rem" placeholder="Note (optional)" />
+        <button class="btn btn-primary" type="submit">Add</button>
+    </div>
+</form>
+
+<div class="panel">
+    @if (Model.Count == 0) { <p class="muted mb-0">You have not added any times yet.</p> }
+    <ul class="list-plain">
+        @foreach (var w in Model)
+        {
+            <li><span><strong>@w.DayOfWeek</strong> · @w.StartTime.ToString("h:mm tt") to @w.EndTime.ToString("h:mm tt") @(string.IsNullOrEmpty(w.Note) ? "" : "· " + w.Note)</span>
+                <form asp-action="Remove" method="post" onsubmit="return confirm('Remove this time?');"><input type="hidden" name="id" value="@w.Id" /><button class="btn btn-outline-danger btn-sm">Remove</button></form></li>
+        }
+    </ul>
+</div>

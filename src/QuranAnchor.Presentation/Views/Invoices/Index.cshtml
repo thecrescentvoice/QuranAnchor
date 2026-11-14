@@ -1,0 +1,64 @@
+@model List<Invoice>
+@inject QuranAnchor.Presentation.Services.CurrentUser Me
+@{
+    ViewData["Title"] = "Class fees";
+    var outstanding = (Dictionary<string, decimal>)ViewBag.Outstanding;
+    string? status = ViewBag.Status; DateOnly today = ViewBag.Today;
+    var canManage = Me.Can(Permissions.ManageInvoices);
+}
+<header class="page-head d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div><h1>Class fees</h1><p class="page-sub">Invoices and balances. Class fees are paid outside the portal, and recorded here.</p></div>
+    @if (canManage) { <a class="btn btn-primary" asp-action="Create"><i class="bi bi-plus-lg" aria-hidden="true"></i> New invoice</a> }
+</header>
+
+<div class="row g-3 section">
+    <div class="col-md-6"><div class="stat"><span class="stat-icon tone-amber"><i class="bi bi-wallet2"></i></span><div>
+        <div class="small-label">@(Me.IsStudent ? "You owe" : "Outstanding")</div>
+        @if (outstanding.Count == 0) { <div class="stat-value">Nothing</div> }
+        else { <div class="stat-value">@string.Join(" + ", outstanding.Select(o => Fmt.Money(o.Key, o.Value)))</div> }
+    </div></div></div>
+</div>
+
+<form method="get" class="d-flex flex-wrap gap-2 mb-3">
+    @if (!Me.IsStudent) { <input name="q" value="@ViewBag.Q" class="form-control" style="max-width:16rem" placeholder="Search student or number" /> }
+    <select name="status" class="form-select" style="max-width:11rem">
+        <option value="">All</option>
+        @foreach (var (value, label) in new[] { ("open", "Not fully paid"), ("overdue", "Overdue"), ("paid", "Paid"), ("cancelled", "Cancelled") })
+        { <option value="@value" selected="@(status == value)">@label</option> }
+    </select>
+    <button class="btn btn-outline-secondary" type="submit">Filter</button>
+</form>
+
+@if (canManage)
+{
+    <details class="panel section no-print">
+        <summary><strong>Create invoices for a whole month</strong></summary>
+        <form asp-action="Generate" method="post" class="rate-row mt-2">
+            <input type="month" name="period" value="@DateTime.UtcNow.ToString("yyyy-MM")" class="form-control" style="max-width:11rem" required />
+            <label class="muted" for="dueDate">due</label>
+            <input id="dueDate" type="date" name="dueDate" value="@DateTime.UtcNow.AddDays(7).ToString("yyyy-MM-dd")" class="form-control" style="max-width:11rem" required />
+            <button class="btn btn-outline-secondary">Create for every student with a class fee</button>
+        </form>
+        <div class="form-text">Students without a monthly class fee, or who already have an invoice for that month, are skipped. Parents are emailed.</div>
+    </details>
+}
+
+@if (Model.Count == 0) { <p class="empty-note"><i class="bi bi-receipt" aria-hidden="true"></i> No invoices here.</p> }
+else
+{
+    <div class="table-card table-responsive"><table class="table align-middle">
+        <thead><tr><th>Number</th>@if (!Me.IsStudent) { <th>Student</th> }<th>For</th><th class="text-end">Amount</th><th class="text-end">Balance</th><th>Due</th><th>Status</th></tr></thead>
+        <tbody>
+        @foreach (var i in Model)
+        {
+            var st = i.StatusText(today);
+            <tr><td><a asp-action="Details" asp-route-id="@i.Id">@i.Number</a></td>
+                @if (!Me.IsStudent) { <td>@i.Student?.FullName</td> }
+                <td>@Fmt.Month(i.Year, i.Month)</td><td class="text-end">@Fmt.Money(i.Currency, i.Amount)</td><td class="text-end">@Fmt.Money(i.Currency, i.Balance)</td>
+                <td class="text-nowrap">@i.DueDate.ToString("d MMM yyyy")</td>
+                <td><span class="badge-status @(st == "Paid" ? "s-completed" : st == "Overdue" ? "s-nothel" : st == "Cancelled" ? "s-cancelled" : "s-pending")">@st</span></td></tr>
+        }
+        </tbody>
+    </table></div>
+}
+<partial name="_Pager" model="(PageInfo)ViewBag.PageInfo" />

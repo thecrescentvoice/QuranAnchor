@@ -50,6 +50,13 @@
     </fieldset>
 
     <fieldset>
+        <legend>Class fee payment instructions</legend>
+        <label asp-for="FeeInstructions" class="form-label"></label>
+        <textarea asp-for="FeeInstructions" class="form-control" rows="3" placeholder="For example: Bank name, account number, account name. Send proof of payment to the supervisor."></textarea>
+        <span asp-validation-for="FeeInstructions" class="field-error"></span>
+    </fieldset>
+
+    <fieldset>
         <legend>Student and tutor IDs</legend>
         <div class="row g-3">
             <div class="col-md-4">

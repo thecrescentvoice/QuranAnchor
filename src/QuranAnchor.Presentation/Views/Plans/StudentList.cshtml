@@ -1,0 +1,17 @@
+@model List<MonthlyPlan>
+@{ ViewData["Title"] = "Monthly plans"; }
+<header class="page-head"><h1>Monthly plans</h1><p class="page-sub">Your child’s goals for each month. You can download each plan as a PDF.</p></header>
+@if (Model.Count == 0) { <p class="empty-note"><i class="bi bi-journal-text" aria-hidden="true"></i> No plan has been published yet.</p> }
+else
+{
+    <div class="cert-grid">
+        @foreach (var p in Model)
+        {
+            <a class="cert-card" asp-action="Show" asp-route-id="@p.Id">
+                <span class="small-label">@p.Student?.FullName</span>
+                <strong>@Fmt.Month(p.Year, p.Month)</strong>
+                <span class="muted">Open the plan</span>
+            </a>
+        }
+    </div>
+}

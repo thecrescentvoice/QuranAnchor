@@ -77,24 +77,23 @@ public class FeedbackFormViewModel
     };
 }
 
-public class PlanFormViewModel
+public class PlanGridRow
 {
-    public Guid StudentId { get; set; }
-    public string StudentName { get; set; } = string.Empty;
+    public StudentProfile Student { get; set; } = null!;
+    public MonthlyPlan? Plan { get; set; }
+    /// <summary>Goal text for each week and track. The key is "week_track", for example "2_3".</summary>
+    public Dictionary<string, string> Values { get; set; } = new();
+}
+
+public class PlanGridViewModel
+{
     public int Year { get; set; }
     public int Month { get; set; }
-    public PublishStatus Status { get; set; }
-
-    [StringLength(500)][Display(Name = "Goal for the month")] public string Goal { get; set; } = string.Empty;
-    [StringLength(2000)][Display(Name = "Goals for this month (one per line)")] public string MonthGoals { get; set; } = string.Empty;
-    [StringLength(2000)][Display(Name = "After every class, the student should (one per line)")] public string PostClassExpectations { get; set; } = string.Empty;
-    [StringLength(2000)][Display(Name = "Daily tilawah focus (one per line, for example: Days 1-7: ...)")] public string DailyTilawahFocus { get; set; } = string.Empty;
-    [StringLength(500)][Display(Name = "Class format")] public string ClassFormat { get; set; } = string.Empty;
-    [StringLength(2000)][Display(Name = "Notes for parents (one per line)")] public string ParentNotes { get; set; } = string.Empty;
-
-    /// <summary>One line per row: sessions | content | activity | muraja'ah   (for example: 1-2 | Waqf signs | Practice | Surah Al-Mulk)</summary>
-    [StringLength(6000)][Display(Name = "Weekly plan, one row per line: sessions | content | activity | muraja'ah")]
-    public string RowsText { get; set; } = string.Empty;
+    public Guid? OnlyStudentId { get; set; }
+    public bool ShowTutor { get; set; }
+    public bool CopiedFromLastMonth { get; set; }
+    public Dictionary<PlanTrack, string[]> Options { get; set; } = new();
+    public List<PlanGridRow> Rows { get; set; } = new();
 }
 
 public class ReportRemarksViewModel
@@ -130,14 +129,26 @@ public class RulesViewModel
     [Range(1, 100)][Display(Name = "Good at or above (%)")] public int GoodThresholdPercent { get; set; }
     [StringLength(2000)][Display(Name = "Plan template: after every class, the student should")] public string PlanExpectationsTemplate { get; set; } = string.Empty;
     [StringLength(2000)][Display(Name = "Plan template: notes for parents")] public string PlanParentNotesTemplate { get; set; } = string.Empty;
+    [StringLength(4000)][Display(Name = "Plan dropdown: Hifz (one per line)")] public string PlanHifzOptions { get; set; } = string.Empty;
+    [StringLength(4000)][Display(Name = "Plan dropdown: Qira’ah (one per line)")] public string PlanQiraahOptions { get; set; } = string.Empty;
+    [StringLength(4000)][Display(Name = "Plan dropdown: Murāja’ah (one per line)")] public string PlanMurajaahOptions { get; set; } = string.Empty;
+    [StringLength(4000)][Display(Name = "Plan dropdown: Tajweed (one per line)")] public string PlanTajweedOptions { get; set; } = string.Empty;
+    [StringLength(1000)][Display(Name = "Closing note on the plan PDF")] public string PlanClosingNote { get; set; } = string.Empty;
 }
 
 public class AnnouncementFormViewModel
 {
+    public Guid? Id { get; set; }
     [Required(ErrorMessage = "Enter a title.")][StringLength(200)] public string Title { get; set; } = string.Empty;
     [Required(ErrorMessage = "Write the announcement.")][StringLength(4000)] public string Body { get; set; } = string.Empty;
     public AnnouncementAudience Audience { get; set; } = AnnouncementAudience.Everyone;
     [Display(Name = "Also send by email")] public bool SendEmail { get; set; }
+
+    [Display(Name = "Flyer (JPG, PNG, WebP or PDF, up to 5 MB)")] public IFormFile? Flyer { get; set; }
+    [Display(Name = "Remove the current flyer")] public bool RemoveFlyer { get; set; }
+    public string ExistingFlyerPath { get; set; } = string.Empty;
+    public string ExistingFlyerName { get; set; } = string.Empty;
+    public string ExistingFlyerKind { get; set; } = string.Empty;
 }
 
 public class DashboardData
@@ -162,12 +173,14 @@ public class DashboardData
     public decimal MonthAmount { get; set; }
     public int MonthHeld { get; set; }
     public List<RescheduleRequest> RequestsForMe { get; set; } = new();
+    public List<Meeting> Meetings { get; set; } = new();
 
     // staff
     public List<ClassSession> MissingFeedback { get; set; } = new();
     public List<(StudentProfile Student, QuranAnchor.Application.Models.PackageUsage Usage)> Ending { get; set; } = new();
     public List<RescheduleRequest> PendingRequests { get; set; } = new();
     public List<StudentProfile> OverdueFees { get; set; } = new();
+    public int NewEnquiries { get; set; }
 
     public List<Announcement> Announcements { get; set; } = new();
 }

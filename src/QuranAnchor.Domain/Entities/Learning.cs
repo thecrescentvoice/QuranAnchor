@@ -49,27 +49,24 @@ public class MonthlyPlan
     public TutorProfile? Tutor { get; set; }
     public int Year { get; set; }
     public int Month { get; set; }
-    public string Goal { get; set; } = string.Empty;
-    public string MonthGoals { get; set; } = string.Empty;          // one per line
-    public string PostClassExpectations { get; set; } = string.Empty; // one per line
-    public string DailyTilawahFocus { get; set; } = string.Empty;     // one per line, e.g. "Days 1-7: Surah ..."
-    public string ClassFormat { get; set; } = string.Empty;
-    public string ParentNotes { get; set; } = string.Empty;          // one per line
+    /// <summary>What the student does after every class, one item per line (the plan's "post-class expectations").</summary>
+    public string PostClassExpectations { get; set; } = string.Empty;
+    /// <summary>An optional extra note for the parent, shown on the plan.</summary>
+    public string ParentNotes { get; set; } = string.Empty;
     public PublishStatus Status { get; set; } = PublishStatus.Draft;
     public DateTime? PublishedAtUtc { get; set; }
-    public List<PlanRow> Rows { get; set; } = new();
+    public List<PlanGoal> Goals { get; set; } = new();
 }
 
-public class PlanRow
+/// <summary>One cell of the month goal grid: a week and a track (Hifz, Qira'ah, Murajaah or Tajweed).</summary>
+public class PlanGoal
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid PlanId { get; set; }
     public MonthlyPlan? Plan { get; set; }
-    public int SessionFrom { get; set; }
-    public int SessionTo { get; set; }
-    public string Content { get; set; } = string.Empty;
-    public string Activity { get; set; } = string.Empty;
-    public string Murajaah { get; set; } = string.Empty;
+    public int Week { get; set; }
+    public PlanTrack Track { get; set; }
+    public string Text { get; set; } = "Not Applicable";
 }
 
 public class MonthlyReport

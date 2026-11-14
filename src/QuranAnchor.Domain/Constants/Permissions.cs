@@ -30,6 +30,13 @@ public static class Permissions
     public const string EditPricing = "settings.pricing.edit";
     public const string ViewAllEarnings = "earnings.view-all";
     public const string PostAnnouncements = "announcements.post";
+    public const string IssueCertificates = "certificates.issue";
+    public const string ManageEnquiries = "enquiries.manage";
+    public const string ViewRatings = "ratings.view";
+    public const string ExportData = "data.export";
+    public const string ManageInvoices = "invoices.manage";
+    public const string ManageMeetings = "meetings.manage";
+    public const string AssignSupervisor = "supervisors.assign";
 
     public static readonly IReadOnlyList<string> All = new[]
     {
@@ -38,6 +45,7 @@ public static class Permissions
         ReactivateAccounts, DeleteAccounts, ManageStaff,
         ViewAllStudents, ReplaceTutor, RotateMeetLink, ManageSchedules, ManageBreakDays,
         OverrideReschedules, ViewMissingFeedback, ViewPayments, MarkFeePaid, EditPricing,
-        ViewAllEarnings, PostAnnouncements
+        ViewAllEarnings, PostAnnouncements, IssueCertificates,
+        ManageEnquiries, ViewRatings, ExportData, ManageInvoices, ManageMeetings, AssignSupervisor
     };
 }

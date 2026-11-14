@@ -23,7 +23,10 @@ public class RulesController(ISettingsService settings, IAuditLogger audit) : Co
             SupervisorAlertHours = s.SupervisorAlertHours, FeeReminderDaysBefore = s.FeeReminderDaysBefore,
             MinFeedbackWords = s.MinFeedbackWords, StrongThresholdPercent = s.StrongThresholdPercent,
             GoodThresholdPercent = s.GoodThresholdPercent, PlanExpectationsTemplate = s.PlanExpectationsTemplate,
-            PlanParentNotesTemplate = s.PlanParentNotesTemplate
+            PlanParentNotesTemplate = s.PlanParentNotesTemplate,
+            PlanHifzOptions = s.PlanHifzOptions, PlanQiraahOptions = s.PlanQiraahOptions,
+            PlanMurajaahOptions = s.PlanMurajaahOptions, PlanTajweedOptions = s.PlanTajweedOptions,
+            PlanClosingNote = s.PlanClosingNote
         });
     }
 
@@ -42,7 +45,10 @@ public class RulesController(ISettingsService settings, IAuditLogger audit) : Co
             SupervisorAlertHours = model.SupervisorAlertHours, FeeReminderDaysBefore = model.FeeReminderDaysBefore,
             MinFeedbackWords = model.MinFeedbackWords, StrongThresholdPercent = model.StrongThresholdPercent,
             GoodThresholdPercent = model.GoodThresholdPercent, PlanExpectationsTemplate = model.PlanExpectationsTemplate ?? "",
-            PlanParentNotesTemplate = model.PlanParentNotesTemplate ?? ""
+            PlanParentNotesTemplate = model.PlanParentNotesTemplate ?? "",
+            PlanHifzOptions = model.PlanHifzOptions ?? "", PlanQiraahOptions = model.PlanQiraahOptions ?? "",
+            PlanMurajaahOptions = model.PlanMurajaahOptions ?? "", PlanTajweedOptions = model.PlanTajweedOptions ?? "",
+            PlanClosingNote = model.PlanClosingNote ?? ""
         }, User.Identity?.Name);
 
         await audit.LogAsync("RulesChanged", "System settings");

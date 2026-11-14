@@ -1,0 +1,70 @@
+@model Enquiry
+@{
+    ViewData["Title"] = "Enquiry";
+    var tutors = (List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.Tutors;
+    var trialLocal = Model.TrialStartUtc is { } t ? TimeHelper.ToLocal(t, Model.TimeZoneId).ToString("yyyy-MM-ddTHH:mm") : "";
+}
+<header class="page-head"><h1>@Model.StudentName <span class="badge-status s-pending">@Model.Status</span></h1><p class="page-sub">Received @Model.CreatedAtUtc.ToString("d MMM yyyy") from @Model.ParentName</p></header>
+
+<div class="row g-3 section">
+    <div class="col-md-6"><div class="panel h-100"><div class="small-label mb-2">About the family</div>
+        <dl class="kv">
+            <dt>Parent</dt><dd>@Model.ParentName</dd><dt>Email</dt><dd><a href="mailto:@Model.Email">@Model.Email</a></dd>
+            <dt>Phone</dt><dd>@Model.Phone</dd><dt>Country</dt><dd>@Model.Country · @TimeHelper.City(Model.TimeZoneId)</dd>
+            <dt>Student</dt><dd>@Model.StudentName@(Model.StudentAge is { } age ? $", age {age}" : "")</dd><dt>Level</dt><dd>@Model.Level</dd>
+        </dl></div></div>
+    <div class="col-md-6"><div class="panel h-100"><div class="small-label mb-2">What they asked</div>
+        <p class="mb-1"><strong>Suitable times:</strong> @(string.IsNullOrWhiteSpace(Model.PreferredTimes) ? "not given" : Model.PreferredTimes)</p>
+        <p class="mb-0" style="white-space:pre-line">@(string.IsNullOrWhiteSpace(Model.Message) ? "No message." : Model.Message)</p></div></div>
+</div>
+
+<section class="section">
+    <h2>Who is looking after this</h2>
+    <div class="panel d-flex flex-wrap align-items-center gap-3">
+        <span>Supervisor: <strong>@ViewBag.SupervisorName</strong></span>
+        @if ((bool)ViewBag.CanTake)
+        {
+            <form asp-action="Take" asp-route-id="@Model.Id" method="post"><button class="btn btn-primary" type="submit"><i class="bi bi-hand-index" aria-hidden="true"></i> Take this enquiry</button></form>
+            <span class="muted small">Until someone takes it, every supervisor can see it. Once you take it, only you (and the admins) can.</span>
+        }
+        @if (ViewBag.HandOverOptions is List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> handOver && handOver.Count > 0)
+        {
+            <form asp-action="HandOver" asp-route-id="@Model.Id" method="post" class="rate-row" onsubmit="return confirm('Hand this enquiry over? You will no longer see it.');">
+                <select name="supervisorId" class="form-select" style="max-width:16rem" required><option value="">Hand over to...</option>@foreach (var o in handOver) { <option value="@o.Value">@o.Text</option> }</select>
+                <button class="btn btn-outline-secondary" type="submit">Hand over</button>
+            </form>
+        }
+        @if (ViewBag.SupervisorOptions is List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> options)
+        {
+            <form asp-action="Assign" asp-route-id="@Model.Id" method="post" class="rate-row">
+                <select name="supervisorId" class="form-select" style="max-width:16rem"><option value="">Nobody (open to all supervisors)</option>@foreach (var o in options) { <option value="@o.Value" selected="@(o.Text == (string)ViewBag.SupervisorName)">@o.Text</option> }</select>
+                <button class="btn btn-outline-secondary" type="submit">Assign</button>
+            </form>
+        }
+    </div>
+</section>
+
+<section class="section">
+    <h2>Follow up</h2>
+    <form asp-action="Update" asp-route-id="@Model.Id" method="post" class="panel">
+        <div class="form-grid">
+            <div><label class="form-label" for="status">Status</label>
+                <select id="status" name="status" class="form-select">@foreach (var s in Enum.GetValues<EnquiryStatus>()) { <option value="@s" selected="@(s == Model.Status)">@s</option> }</select></div>
+            <div><label class="form-label" for="trialTutorId">Trial class tutor</label>
+                <select id="trialTutorId" name="trialTutorId" class="form-select"><option value="">No trial yet</option>@foreach (var tu in tutors) { <option value="@tu.Value" selected="@(Model.TrialTutorId?.ToString() == tu.Value)">@tu.Text</option> }</select></div>
+            <div><label class="form-label" for="trialWhen">Trial class time (@TimeHelper.City(Model.TimeZoneId) time)</label>
+                <input id="trialWhen" name="trialWhen" type="datetime-local" value="@trialLocal" class="form-control" /></div>
+            <div><label class="form-label" for="trialLink">Meeting link for the trial</label>
+                <input id="trialLink" name="trialLink" value="@Model.TrialMeetingLink" class="form-control" placeholder="https://meet.google.com/..." /></div>
+        </div>
+        <div class="mt-3"><label class="form-label" for="notes">Notes (only staff see these)</label><textarea id="notes" name="notes" class="form-control" rows="3">@Model.Notes</textarea></div>
+        <div class="form-text mt-2">Setting a tutor and a time emails the parent and the tutor, with the time in each person's own time zone.</div>
+        <button class="btn btn-primary mt-3" type="submit">Save</button>
+    </form>
+</section>
+
+<div class="d-flex flex-wrap gap-2 no-print">
+    @if (Model.Status != EnquiryStatus.Enrolled) { <a class="btn btn-outline-secondary" asp-controller="Students" asp-action="Create" asp-route-enquiryId="@Model.Id"><i class="bi bi-person-plus" aria-hidden="true"></i> Make this a student</a> }
+    <form asp-action="Delete" asp-route-id="@Model.Id" method="post" onsubmit="return confirm('Delete this enquiry?');"><button class="btn btn-outline-danger">Delete</button></form>
+    <a class="btn btn-link" asp-action="Index">Back to the list</a>
+</div>

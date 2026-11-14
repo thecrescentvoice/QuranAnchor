@@ -1,0 +1,19 @@
+@model StudentProfile
+@{
+    ViewData["Title"] = "Change tutor";
+    var tutors = (IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.Tutors;
+}
+<header class="page-head"><h1>Change tutor for @Model.FullName</h1>
+    <p class="page-sub">@(Model.Tutor is null ? "This student has no tutor yet." : "Now taught by " + Model.Tutor.FullName + ".") Their weekly class times and upcoming classes move to the new tutor, and the history of who taught them is kept.</p></header>
+
+<form asp-action="ChangeTutor" asp-route-id="@Model.Id" method="post" onsubmit="return confirm('Change the tutor for @Model.FullName? The parent and both tutors will be emailed.');">
+    <div class="mb-3" style="max-width:24rem"><label class="form-label" for="newTutorId">New tutor</label>
+        <select name="newTutorId" id="newTutorId" asp-items="tutors" class="form-select" required><option value="">Choose a tutor</option></select></div>
+    <button class="btn btn-primary btn-lg" type="submit">Change tutor</button>
+    <a class="btn btn-link" asp-action="Details" asp-route-id="@Model.Id">Cancel</a>
+</form>
+<ul class="muted mt-3">
+    <li>The new tutor must be free at all of this student's upcoming classes. If not, nothing changes and you are told when they clash.</li>
+    <li>The parent, the new tutor and the previous tutor are emailed.</li>
+    <li>Afterwards, replace the student's Meet link so the previous tutor cannot join.</li>
+</ul>

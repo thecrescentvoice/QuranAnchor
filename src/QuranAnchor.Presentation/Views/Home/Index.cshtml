@@ -7,10 +7,23 @@
     string Help(string category) => Fmt.WhatsApp(b, $"Assalamu alaikum, I would like to report an issue about {Model.Student?.FullName} ({Model.Student?.StudentCode}). Category: {category}.");
 }
 
-<header class="page-head">
+<section class="hero">
+    <p class="hero-ar" dir="rtl">بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</p>
     <h1>Assalamu alaikum, @Model.FullName</h1>
-    <p class="page-sub">Signed in as @Model.RoleName.</p>
-</header>
+    <p>
+        <span class="chip">@Model.RoleName</span>
+        @if (Model.Role == Roles.Student && Model.Student is not null)
+        {
+            <span class="chip">@Model.Student.Level</span>
+            if (Model.Student.Tutor is not null)
+            {
+                <span>with @Model.Student.Tutor.FullName</span>
+            }
+        }
+        @if (Model.Role == Roles.Tutor) { <span>@(Model.Today.Count == 0 ? "No classes today." : $"{Model.Today.Count} class(es) today.")</span> }
+        @if (Model.Role != Roles.Student && Model.Role != Roles.Tutor) { <span>Here is how the academy is doing.</span> }
+    </p>
+</section>
 
 @if (Model.Announcements.Count > 0)
 {
@@ -20,7 +33,15 @@
             <ul class="list-plain">
                 @foreach (var a in Model.Announcements)
                 {
-                    <li><span><strong>@a.Title</strong><br /><span class="muted">@a.Body</span></span><span class="muted small">@a.CreatedAtUtc.ToString("d MMM")</span></li>
+                    <li class="d-block">
+                        <div class="d-flex justify-content-between gap-2"><strong>@a.Title</strong><span class="muted small">@a.CreatedAtUtc.ToString("d MMM")</span></div>
+                        <div class="muted" style="white-space:pre-line">@Fmt.Linkify(a.Body)</div>
+                        @if (Fmt.VideoLink(a.Body) is { } video)
+                        {
+                            <a class="btn btn-outline-secondary btn-sm mt-1" href="@video" target="_blank" rel="noopener noreferrer"><i class="bi bi-play-circle" aria-hidden="true"></i> Watch the video</a>
+                        }
+                        <partial name="~/Views/Announcements/_FlyerBlock.cshtml" model="a" />
+                    </li>
                 }
             </ul>
         </div>
@@ -31,7 +52,7 @@
 {
     if (Model.Student is null)
     {
-        <p class="empty-note">Your student profile was not found. Please contact the supervisor.</p>
+        <p class="empty-note"><i class="bi bi-person-x"></i> Your student profile was not found. Please contact the supervisor.</p>
     }
     else
     {
@@ -48,34 +69,43 @@
         {
             <div class="join-card">
                 <div class="small-label" style="color:#1F2A2C">Class now</div>
-                <h2 class="h4 mb-3">@Fmt.Time(Model.JoinNow.StartUtc, tz) · @Model.JoinNow.DurationMinutes minutes</h2>
+                <h2 class="h4 mb-3" style="text-transform:none;letter-spacing:0;color:inherit">@Fmt.Time(Model.JoinNow.StartUtc, tz) · @Model.JoinNow.DurationMinutes minutes</h2>
                 <a class="btn btn-lg" asp-controller="Sessions" asp-action="Join" asp-route-id="@Model.JoinNow.Id"><i class="bi bi-camera-video" aria-hidden="true"></i> Join class</a>
             </div>
         }
 
         <div class="row g-3 section">
-            <div class="col-md-6">
-                <div class="panel h-100">
-                    <div class="small-label">This month</div>
-                    @if (Model.Usage is not null)
-                    {
-                        var pct = Model.Usage.Total == 0 ? 0 : Math.Min(100, Model.Usage.Used * 100 / Model.Usage.Total);
-                        <p class="h4 mb-2">@Model.Usage.Used / @Model.Usage.Total sessions</p>
-                        <div class="meter" role="progressbar" aria-valuenow="@pct" aria-valuemin="0" aria-valuemax="100"><span style="width:@(pct)%"></span></div>
-                    }
-                    else
-                    {
-                        <p class="muted mb-0">No classes are set up for this month yet.</p>
-                    }
-                </div>
+            <div class="col-md-4">
+                <div class="stat"><span class="stat-icon"><i class="bi bi-calendar-check"></i></span>
+                    <div class="flex-grow-1">
+                        <div class="small-label">Sessions this month</div>
+                        @if (Model.Usage is not null)
+                        {
+                            var pct = Model.Usage.Total == 0 ? 0 : Math.Min(100, Model.Usage.Used * 100 / Model.Usage.Total);
+                            <div class="stat-value">@Model.Usage.Used / @Model.Usage.Total</div>
+                            <div class="meter mt-1" role="progressbar" aria-valuenow="@pct" aria-valuemin="0" aria-valuemax="100"><span style="width:@(pct)%"></span></div>
+                        }
+                        else { <div class="stat-sub">Not set up yet</div> }
+                    </div></div>
             </div>
-            <div class="col-md-6">
-                <div class="panel h-100">
-                    <div class="small-label">Portal fee</div>
-                    <p class="h5 mb-1">@(Model.Fee switch { FeeState.Paid => "Paid", FeeState.Exempt => "Not required", FeeState.Overdue => "Overdue", _ => "Locked" })</p>
-                    @if (Model.Student.PaidUntilUtc is { } until) { <p class="muted mb-2">Paid until @until.ToString("d MMM yyyy")</p> }
-                    <a asp-controller="Payments" asp-action="Index">Pay or see receipts</a>
-                </div>
+            <div class="col-md-4">
+                <div class="stat"><span class="stat-icon tone-cyan"><i class="bi bi-clock-history"></i></span>
+                    <div>
+                        <div class="small-label">Next class</div>
+                        @if (Model.Upcoming.FirstOrDefault(u => u.StartUtc > DateTime.UtcNow) is { } next)
+                        {
+                            <div class="stat-value">@Fmt.Day(next.StartUtc, tz)</div><div class="stat-sub">@Fmt.Time(next.StartUtc, tz)</div>
+                        }
+                        else { <div class="stat-sub">None scheduled</div> }
+                    </div></div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat"><span class="stat-icon @(Model.Fee is FeeState.Paid or FeeState.Exempt ? "tone-green" : "tone-amber")"><i class="bi bi-credit-card"></i></span>
+                    <div>
+                        <div class="small-label">Portal fee</div>
+                        <div class="stat-value">@(Model.Fee switch { FeeState.Paid => "Paid", FeeState.Exempt => "Not required", FeeState.Overdue => "Overdue", _ => "Locked" })</div>
+                        <div class="stat-sub">@(Model.Student.PaidUntilUtc is { } until ? $"until {until:d MMM yyyy}" : "") <a asp-controller="Payments" asp-action="Index">Details</a></div>
+                    </div></div>
             </div>
         </div>
 
@@ -92,6 +122,14 @@
                         }
                     </ul>
                 }
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>This month's rating</h2>
+            <div class="panel d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <span class="muted">How are the classes going? Rate your tutor once a month.</span>
+                <a class="btn btn-outline-secondary" asp-controller="Ratings" asp-action="Rate"><i class="bi bi-star" aria-hidden="true"></i> Rate my tutor</a>
             </div>
         </section>
 
@@ -115,8 +153,10 @@
 else if (Model.Role == Roles.Tutor)
 {
     <div class="row g-3 section">
-        <div class="col-md-6"><div class="panel h-100"><div class="small-label">This month</div><p class="h4 mb-1">@Model.MonthAmount.ToString("₦#,##0.00")</p><p class="muted mb-0">from @Model.MonthHeld classes · <a asp-controller="Earnings" asp-action="Mine">Details</a></p></div></div>
-        <div class="col-md-6"><div class="panel h-100"><div class="small-label">Feedback waiting</div><p class="h4 mb-1">@Model.NeedFeedback.Count</p><p class="muted mb-0">classes with no feedback yet</p></div></div>
+        <div class="col-6 col-lg-3"><div class="stat"><span class="stat-icon tone-green"><i class="bi bi-cash-coin"></i></span><div><div class="small-label">Earned this month</div><div class="stat-value">@Model.MonthAmount.ToString("₦#,##0")</div></div></div></div>
+        <div class="col-6 col-lg-3"><div class="stat"><span class="stat-icon"><i class="bi bi-check2-circle"></i></span><div><div class="small-label">Classes held</div><div class="stat-value">@Model.MonthHeld</div></div></div></div>
+        <div class="col-6 col-lg-3"><div class="stat"><span class="stat-icon tone-cyan"><i class="bi bi-calendar-day"></i></span><div><div class="small-label">Today</div><div class="stat-value">@Model.Today.Count</div></div></div></div>
+        <div class="col-6 col-lg-3"><div class="stat"><span class="stat-icon tone-amber"><i class="bi bi-pencil-square"></i></span><div><div class="small-label">Feedback waiting</div><div class="stat-value">@Model.NeedFeedback.Count</div></div></div></div>
     </div>
 
     @if (Model.RequestsForMe.Count > 0)
@@ -127,6 +167,23 @@ else if (Model.Role == Roles.Tutor)
                 @foreach (var r in Model.RequestsForMe)
                 {
                     <li><span>@r.Session?.Student?.FullName asks to move a class to <strong>@Fmt.Local(r.ProposedStartUtc, tz)</strong></span><a asp-controller="Sessions" asp-action="Details" asp-route-id="@r.SessionId">Answer</a></li>
+                }
+            </ul></div>
+        </section>
+    }
+
+    @if (Model.Meetings.Count > 0)
+    {
+        <section class="section">
+            <h2>Upcoming meetings</h2>
+            <div class="panel"><ul class="list-plain">
+                @foreach (var m in Model.Meetings)
+                {
+                    <li><span><strong>@m.Title</strong> · @Fmt.Local(m.StartUtc, tz)</span>
+                        <span class="d-flex gap-2 align-items-center">
+                            <a asp-controller="Meetings" asp-action="Details" asp-route-id="@m.Id">Details</a>
+                            @if (!string.IsNullOrEmpty(m.MeetingLink)) { <a class="btn btn-primary btn-sm" href="@m.MeetingLink" target="_blank" rel="noopener">Join</a> }
+                        </span></li>
                 }
             </ul></div>
         </section>
@@ -164,11 +221,16 @@ else if (Model.Role == Roles.Tutor)
 else
 {
     <div class="row g-3 section">
-        <div class="col-6 col-md-3"><div class="panel h-100"><div class="small-label">No feedback</div><p class="h3 mb-0">@Model.MissingFeedback.Count</p></div></div>
-        <div class="col-6 col-md-3"><div class="panel h-100"><div class="small-label">Packages ending</div><p class="h3 mb-0">@Model.Ending.Count</p></div></div>
-        <div class="col-6 col-md-3"><div class="panel h-100"><div class="small-label">Change requests</div><p class="h3 mb-0">@Model.PendingRequests.Count</p></div></div>
-        <div class="col-6 col-md-3"><div class="panel h-100"><div class="small-label">Fee overdue</div><p class="h3 mb-0">@Model.OverdueFees.Count</p></div></div>
+        <div class="col-6 col-lg-3"><div class="stat"><span class="stat-icon tone-amber"><i class="bi bi-pencil-square"></i></span><div><div class="small-label">No feedback</div><div class="stat-value">@Model.MissingFeedback.Count</div></div></div></div>
+        <div class="col-6 col-lg-3"><div class="stat"><span class="stat-icon"><i class="bi bi-hourglass-split"></i></span><div><div class="small-label">Packages ending</div><div class="stat-value">@Model.Ending.Count</div></div></div></div>
+        <div class="col-6 col-lg-3"><div class="stat"><span class="stat-icon tone-cyan"><i class="bi bi-arrow-left-right"></i></span><div><div class="small-label">Change requests</div><div class="stat-value">@Model.PendingRequests.Count</div></div></div></div>
+        <div class="col-6 col-lg-3"><div class="stat"><span class="stat-icon tone-magenta"><i class="bi bi-credit-card-2-front"></i></span><div><div class="small-label">Fee overdue</div><div class="stat-value">@Model.OverdueFees.Count</div></div></div></div>
     </div>
+
+    @if (Model.NewEnquiries > 0)
+    {
+        <div class="banner banner-warn"><i class="bi bi-inbox" aria-hidden="true"></i> <strong>@Model.NewEnquiries new enquiry(ies)</strong> from families asking about classes. <a asp-controller="Enquiries" asp-action="Index">Open the list</a></div>
+    }
 
     <section class="section">
         <h2>Classes with no feedback</h2>

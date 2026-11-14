@@ -1,0 +1,60 @@
+@model List<TutorSlotResult>
+@{
+    ViewData["Title"] = "Tutor availability";
+    var tutors = (List<TutorProfile>)ViewBag.Tutors;
+    var windows = (Dictionary<Guid, List<TutorAvailability>>)ViewBag.Windows;
+    var zones = (List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.Zones;
+    DayOfWeek? day = ViewBag.Day; TimeOnly? time = ViewBag.Time; int duration = ViewBag.Duration;
+}
+<header class="page-head"><h1>Tutor availability</h1><p class="page-sub">Find a tutor who is free, before you assign a new student.</p></header>
+
+<section class="section">
+    <h2>Who is free?</h2>
+    <form method="get" class="panel">
+        <div class="rate-row">
+            <select name="day" class="form-select" style="max-width:11rem" required>@foreach (var d in Enum.GetValues<DayOfWeek>()) { <option value="@d" selected="@(day == d)">@d</option> }</select>
+            <input type="time" name="time" value="@(time?.ToString("HH:mm"))" class="form-control" style="max-width:9rem" required />
+            <input type="number" name="duration" value="@duration" class="form-control" style="max-width:7rem" title="Minutes" />
+            <select name="zone" asp-items="zones" class="form-select" style="max-width:13rem"></select>
+            <button class="btn btn-primary" type="submit">Find tutors</button>
+        </div>
+        <div class="form-text">Enter the time in the family's time zone. We convert it to each tutor's own time.</div>
+    </form>
+    @if (day is not null && time is not null)
+    {
+        <div class="table-card table-responsive mt-3"><table class="table align-middle">
+            <thead><tr><th>Tutor</th><th>Result</th><th>Details</th></tr></thead>
+            <tbody>
+            @foreach (var r in Model)
+            {
+                <tr><td><a asp-controller="Tutors" asp-action="Details" asp-route-id="@r.Tutor.Id">@r.Tutor.FullName</a></td>
+                    <td><span class="badge-status @(r.Status == "Free" ? "s-completed" : r.Status == "Busy" ? "s-pending" : "s-cancelled")">@r.Status</span></td>
+                    <td class="muted">@r.Detail</td></tr>
+            }
+            </tbody>
+        </table></div>
+    }
+</section>
+
+<section class="section">
+    <h2>Everyone's weekly times</h2>
+    <div class="table-card table-responsive"><table class="table align-middle">
+        <thead><tr><th>Tutor</th><th>Time zone</th><th>Available</th></tr></thead>
+        <tbody>
+        @foreach (var t in tutors)
+        {
+            <tr><td>@t.FullName</td><td>@TimeHelper.City(t.TimeZoneId)</td>
+                <td>
+                    @if (windows.TryGetValue(t.Id, out var list))
+                    {
+                        <text>@string.Join(" · ", list.Select(w => $"{w.DayOfWeek.ToString()[..3]} {w.StartTime:h:mm tt}-{w.EndTime:h:mm tt}"))</text>
+                    }
+                    else
+                    {
+                        <span class="muted">Not set</span>
+                    }
+                </td></tr>
+        }
+        </tbody>
+    </table></div>
+</section>

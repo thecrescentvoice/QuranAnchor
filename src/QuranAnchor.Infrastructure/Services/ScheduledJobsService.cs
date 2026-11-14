@@ -67,6 +67,8 @@ public sealed class ScheduledJobsService(IServiceScopeFactory scopes, ILogger<Sc
         await SendMissingFeedbackAsync(db, notify, rules, baseUrl, now, ct);
         await SendFeeRemindersAsync(db, notify, rules, baseUrl, now, ct);
         await SendCarryOverNoticesAsync(db, notify, now, ct);
+        await SendInvoiceRemindersAsync(db, notify, settings, now, ct);
+        await SendMeetingRemindersAsync(db, notify, now, ct);
     }
 
     private static async Task<bool> ClaimAsync(QuranAnchorDbContext db, string key, CancellationToken ct)
@@ -145,7 +147,7 @@ public sealed class ScheduledJobsService(IServiceScopeFactory scopes, ILogger<Sc
             .Where(s => s.Status == SessionStatus.Scheduled && s.StartUtc < now && s.StartUtc > now.AddDays(-14))
             .ToListAsync(ct);
 
-        var alerts = new List<string>();
+        var alerts = new List<(Guid? Supervisor, string Line)>();
         foreach (var s in pending.Where(p => p.EndUtc <= now.AddHours(-rules.TutorFeedbackReminderHours)))
         {
             if (s.Student is null || s.Tutor is null) continue;
@@ -161,13 +163,14 @@ public sealed class ScheduledJobsService(IServiceScopeFactory scopes, ILogger<Sc
         {
             if (s.Student is null || s.Tutor is null) continue;
             if (!await ClaimAsync(db, $"fbsup:{s.Id}", ct)) continue;
-            alerts.Add($"{WebUtility.HtmlEncode(s.Tutor.FullName)}: {WebUtility.HtmlEncode(s.Student.FullName)}, {TimeHelper.Format(s.StartUtc, s.Tutor.TimeZoneId)}");
+            alerts.Add((s.Tutor.SupervisorId, $"{WebUtility.HtmlEncode(s.Tutor.FullName)}: {WebUtility.HtmlEncode(s.Student.FullName)}, {TimeHelper.Format(s.StartUtc, s.Tutor.TimeZoneId)}"));
         }
 
-        if (alerts.Count > 0)
+        // Each supervisor is told only about their own tutors.
+        foreach (var group in alerts.GroupBy(a => a.Supervisor))
         {
-            var body = await notify.WrapAsync("Classes with no feedback", "These classes ended with no feedback and were not marked as not held:", string.Join("<br />", alerts));
-            await notify.SendToSupervisorsAsync("Classes with no feedback", body, ct);
+            var body = await notify.WrapAsync("Classes with no feedback", "These classes ended with no feedback and were not marked as not held:", string.Join("<br />", group.Select(a => a.Line)));
+            await notify.SendToSupervisorAsync(group.Key, "Classes with no feedback", body, ct);
         }
     }
 
@@ -188,6 +191,58 @@ public sealed class ScheduledJobsService(IServiceScopeFactory scopes, ILogger<Sc
         }
     }
 
+    private static async Task SendMeetingRemindersAsync(QuranAnchorDbContext db, INotificationService notify, DateTime now, CancellationToken ct)
+    {
+        var meetings = await db.Meetings.Include(m => m.Invitees)
+            .Where(m => !m.IsCancelled && m.StartUtc > now && m.StartUtc <= now.AddHours(25)).ToListAsync(ct);
+        if (meetings.Count == 0) return;
+        var tutors = await db.Tutors.Where(t => t.Status == AccountStatus.Active).ToListAsync(ct);
+
+        foreach (var meeting in meetings)
+        {
+            var hoursLeft = (meeting.StartUtc - now).TotalHours;
+            var kind = hoursLeft <= 1.25 ? "1h" : hoursLeft >= 23 ? "24h" : null;
+            if (kind is null) continue;
+
+            var invited = meeting.AllTutors
+                ? tutors.Where(t => meeting.SupervisorId == null || t.SupervisorId == meeting.SupervisorId).ToList()
+                : tutors.Where(t => meeting.Invitees.Any(i => i.TutorId == t.Id)).ToList();
+            foreach (var tutor in invited)
+            {
+                if (!await ClaimAsync(db, $"meet{kind}:{meeting.Id}:{tutor.Id}", ct)) continue;
+                var link = string.IsNullOrWhiteSpace(meeting.MeetingLink) ? "The meeting link will be shared before the meeting." : $"Join: <a href=\"{WebUtility.HtmlEncode(meeting.MeetingLink)}\">{WebUtility.HtmlEncode(meeting.MeetingLink)}</a>";
+                var body = await notify.WrapAsync("Meeting reminder",
+                    $"<strong>{WebUtility.HtmlEncode(meeting.Title)}</strong> starts {(kind == "1h" ? "in about an hour" : "tomorrow")}: {TimeHelper.Format(meeting.StartUtc, tutor.TimeZoneId)} ({TimeHelper.City(tutor.TimeZoneId)} time).", link);
+                await notify.SendToTutorAsync(tutor, $"Reminder: {meeting.Title}", body, ct);
+            }
+        }
+    }
+
+    private static async Task SendInvoiceRemindersAsync(QuranAnchorDbContext db, INotificationService notify, ISettingsService settings, DateTime now, CancellationToken ct)
+    {
+        var today = DateOnly.FromDateTime(now);
+        var overdue = (await db.Invoices.Include(i => i.Student).Include(i => i.Payments)
+            .Where(i => !i.IsCancelled && i.DueDate < today).OrderBy(i => i.DueDate).Take(200).ToListAsync(ct))
+            .Where(i => i.Balance > 0).ToList();
+        if (overdue.Count == 0) return;
+
+        var brand = await settings.GetBrandingAsync(ct);
+        foreach (var invoice in overdue)
+        {
+            if (invoice.Student is null) continue;
+            if (!await ClaimAsync(db, $"invover:{invoice.Id}", ct)) continue;
+
+            var how = string.IsNullOrWhiteSpace(brand.FeeInstructions)
+                ? "Please follow the payment instructions you were given in the class group."
+                : "How to pay: " + WebUtility.HtmlEncode(brand.FeeInstructions).Replace("\n", "<br />");
+            var body = await notify.WrapAsync("Class fee reminder",
+                $"Invoice {invoice.Number} for {WebUtility.HtmlEncode(invoice.Student.FullName)} was due on {invoice.DueDate:d MMM yyyy}.",
+                $"The balance is <strong>{invoice.Currency} {invoice.Balance:N2}</strong>.", how,
+                "If you have already paid, please send the proof of payment to the supervisor.");
+            await notify.SendToParentAsync(invoice.Student, "Class fee reminder", body, ct);
+        }
+    }
+
     private static async Task SendCarryOverNoticesAsync(QuranAnchorDbContext db, INotificationService notify, DateTime now, CancellationToken ct)
     {
         var packages = await db.Packages.Include(p => p.Student).ThenInclude(s => s!.Tutor)
@@ -202,7 +257,7 @@ public sealed class ScheduledJobsService(IServiceScopeFactory scopes, ILogger<Sc
                 $"{WebUtility.HtmlEncode(p.Student.FullName)} has <strong>{p.CarriedInSessions}</strong> session(s) left from last month.",
                 "Please agree with the parent how these classes will be held, then use Add a session if you need extra dates.");
             if (p.Student.Tutor is not null) await notify.SendToTutorAsync(p.Student.Tutor, "Sessions carried over", body, ct);
-            await notify.SendToSupervisorsAsync("Sessions carried over", body, ct);
+            await notify.SendToSupervisorAsync(p.Student.SupervisorId, "Sessions carried over", body, ct);
         }
     }
 }

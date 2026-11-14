@@ -1,5 +1,4 @@
-using System.Text;
-using System.Text.RegularExpressions;
+using System.IO.Compression;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -9,11 +8,16 @@ using QuranAnchor.Domain.Constants;
 using QuranAnchor.Domain.Entities;
 using QuranAnchor.Domain.Enums;
 using QuranAnchor.Infrastructure.Persistence;
+using QuranAnchor.Presentation.Helpers;
 using QuranAnchor.Presentation.Services;
 using QuranAnchor.Presentation.ViewModels;
 
 namespace QuranAnchor.Presentation.Controllers;
 
+/// <summary>
+/// Monthly plans. Tutors fill one grid for all their students (weeks 1 to 4, across Hifz, Qira'ah, Murāja'ah and Tajweed),
+/// then download a PDF for each student. Parents see only published plans.
+/// </summary>
 [Authorize]
 public class PlansController(
     QuranAnchorDbContext db,
@@ -22,140 +26,189 @@ public class PlansController(
     IAuditLogger audit,
     CurrentUser me) : Controller
 {
-    private static readonly Regex RangePattern = new(@"^(\d+)\s*(?:[-–]\s*(\d+))?$", RegexOptions.Compiled);
+    private const string NotApplicable = "Not Applicable";
+    private const int Weeks = 4;
+    private static readonly PlanTrack[] Tracks = { PlanTrack.Hifz, PlanTrack.Qiraah, PlanTrack.Murajaah, PlanTrack.Tajweed };
 
-    private async Task<bool> CanWriteAsync(StudentProfile s)
+    private static string[] Lines(string? text) =>
+        (text ?? string.Empty).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    /// <summary>The students this person may write plans for: a tutor's own students, or everyone for staff.</summary>
+    private async Task<List<StudentProfile>> WritableStudentsAsync(Guid? onlyStudent)
     {
-        if (me.Can(Permissions.ManageSchedules)) return true;
-        return me.IsTutor && s.TutorId == (await me.TutorAsync())?.Id;
+        var query = db.Students.AsNoTracking().Include(s => s.Tutor).Where(s => s.Status != AccountStatus.Deactivated);
+        if (me.IsTutor)
+        {
+            var tutor = await me.TutorAsync();
+            if (tutor is null) return new List<StudentProfile>();
+            query = query.Where(s => s.TutorId == tutor.Id);
+        }
+        if (onlyStudent is not null) query = query.Where(s => s.Id == onlyStudent);
+        return await query.OrderBy(s => s.Tutor!.FullName).ThenBy(s => s.FullName).ToListAsync();
     }
 
-    public async Task<IActionResult> Index()
+    // ---------- The grid (tutors and staff) and the parent's list ----------
+
+    public async Task<IActionResult> Index(int? year, int? month, Guid? studentId, bool copyLast = false)
     {
-        var query = db.Plans.AsNoTracking().Include(p => p.Student).AsQueryable();
         if (me.IsStudent)
         {
             var student = await me.StudentAsync();
-            query = query.Where(p => p.StudentId == student!.Id && p.Status == PublishStatus.Published);
+            var mine = student is null
+                ? new List<MonthlyPlan>()
+                : await db.Plans.AsNoTracking().Include(p => p.Student).Where(p => p.StudentId == student.Id && p.Status == PublishStatus.Published)
+                    .OrderByDescending(p => p.Year).ThenByDescending(p => p.Month).ToListAsync();
+            return View("StudentList", mine);
         }
-        else if (me.IsTutor)
-        {
-            var tutor = await me.TutorAsync();
-            query = query.Where(p => p.TutorId == tutor!.Id);
-        }
-        return View(await query.OrderByDescending(p => p.Year).ThenByDescending(p => p.Month).Take(100).ToListAsync());
-    }
+        if (!me.IsStaff && !me.IsTutor) return Forbid();
 
-    // ---------- Write ----------
-
-    [HttpGet]
-    public async Task<IActionResult> Edit(Guid studentId, int? year, int? month)
-    {
-        var student = await db.Students.AsNoTracking().FirstOrDefaultAsync(s => s.Id == studentId);
-        if (student is null) return NotFound();
-        if (!await CanWriteAsync(student)) return Forbid();
-
-        var today = TimeHelper.LocalToday(student.TimeZoneId);
-        var y = year ?? today.Year; var m = month ?? today.Month;
-        var plan = await db.Plans.AsNoTracking().Include(p => p.Rows).FirstOrDefaultAsync(p => p.StudentId == studentId && p.Year == y && p.Month == m);
         var rules = await settings.GetSystemAsync();
+        var today = TimeHelper.ToLocal(DateTime.UtcNow, "Africa/Lagos");
+        var y = year ?? today.Year;
+        var m = Math.Clamp(month ?? today.Month, 1, 12);
 
-        var model = new PlanFormViewModel { StudentId = studentId, StudentName = student.FullName, Year = y, Month = m };
-        if (plan is null)
+        var students = await WritableStudentsAsync(studentId);
+        var ids = students.Select(s => s.Id).ToList();
+        var plans = await db.Plans.AsNoTracking().Include(p => p.Goals).Where(p => ids.Contains(p.StudentId) && p.Year == y && p.Month == m).ToListAsync();
+
+        var previous = new List<MonthlyPlan>();
+        if (copyLast)
         {
-            model.PostClassExpectations = rules.PlanExpectationsTemplate;
-            model.ParentNotes = rules.PlanParentNotesTemplate;
-            model.ClassFormat = await ClassFormatAsync(studentId, today);
-
-            // Start from last month's plan when there is one.
             var prev = new DateOnly(y, m, 1).AddMonths(-1);
-            var last = await db.Plans.AsNoTracking().Include(p => p.Rows).FirstOrDefaultAsync(p => p.StudentId == studentId && p.Year == prev.Year && p.Month == prev.Month);
-            if (last is not null)
-            {
-                model.Goal = last.Goal; model.MonthGoals = last.MonthGoals; model.PostClassExpectations = last.PostClassExpectations;
-                model.DailyTilawahFocus = last.DailyTilawahFocus; model.ParentNotes = last.ParentNotes; model.RowsText = RowsToText(last.Rows);
-            }
+            previous = await db.Plans.AsNoTracking().Include(p => p.Goals).Where(p => ids.Contains(p.StudentId) && p.Year == prev.Year && p.Month == prev.Month).ToListAsync();
         }
-        else
+
+        var model = new PlanGridViewModel
         {
-            model.Status = plan.Status; model.Goal = plan.Goal; model.MonthGoals = plan.MonthGoals; model.PostClassExpectations = plan.PostClassExpectations;
-            model.DailyTilawahFocus = plan.DailyTilawahFocus; model.ClassFormat = plan.ClassFormat; model.ParentNotes = plan.ParentNotes; model.RowsText = RowsToText(plan.Rows);
+            Year = y, Month = m, OnlyStudentId = studentId, ShowTutor = me.IsStaff, CopiedFromLastMonth = copyLast,
+            Options = new Dictionary<PlanTrack, string[]>
+            {
+                [PlanTrack.Hifz] = Lines(rules.PlanHifzOptions), [PlanTrack.Qiraah] = Lines(rules.PlanQiraahOptions),
+                [PlanTrack.Murajaah] = Lines(rules.PlanMurajaahOptions), [PlanTrack.Tajweed] = Lines(rules.PlanTajweedOptions)
+            }
+        };
+
+        foreach (var student in students)
+        {
+            var plan = plans.FirstOrDefault(p => p.StudentId == student.Id);
+            // A student without a plan yet starts from last month's goals when "Copy from last month" was chosen.
+            var source = plan ?? previous.FirstOrDefault(p => p.StudentId == student.Id);
+            var row = new PlanGridRow { Student = student, Plan = plan };
+            for (var week = 1; week <= Weeks; week++)
+                foreach (var track in Tracks)
+                    row.Values[$"{week}_{(int)track}"] = source?.Goals.FirstOrDefault(g => g.Week == week && g.Track == track)?.Text ?? NotApplicable;
+            model.Rows.Add(row);
         }
         return View(model);
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(PlanFormViewModel model)
+    public async Task<IActionResult> Save(int year, int month, string? mode, Guid? studentId)
     {
-        var student = await db.Students.FirstOrDefaultAsync(s => s.Id == model.StudentId);
-        if (student is null) return NotFound();
-        if (!await CanWriteAsync(student)) return Forbid();
-        model.StudentName = student.FullName;
+        if (!me.IsStaff && !me.IsTutor) return Forbid();
+        var rules = await settings.GetSystemAsync();
+        var students = await WritableStudentsAsync(studentId);
 
-        var rows = ParseRows(model.RowsText, out var error);
-        if (error is not null) ModelState.AddModelError(nameof(model.RowsText), error);
-        if (!ModelState.IsValid) return View(model);
-
-        var plan = await db.Plans.Include(p => p.Rows).FirstOrDefaultAsync(p => p.StudentId == model.StudentId && p.Year == model.Year && p.Month == model.Month);
-        if (plan is null)
+        var saved = 0;
+        var skipped = new List<string>();
+        foreach (var student in students)
         {
-            plan = new MonthlyPlan { StudentId = student.Id, TutorId = student.TutorId ?? Guid.Empty, Year = model.Year, Month = model.Month };
-            if (student.TutorId is null) { ModelState.AddModelError(string.Empty, "Assign a tutor before writing a plan."); return View(model); }
-            db.Plans.Add(plan);
+            if (!Request.Form.Keys.Any(k => k.StartsWith($"g_{student.Id}_", StringComparison.Ordinal))) continue;
+            if (student.TutorId is null) { skipped.Add(student.FullName); continue; }
+
+            var plan = await db.Plans.Include(p => p.Goals).FirstOrDefaultAsync(p => p.StudentId == student.Id && p.Year == year && p.Month == month);
+            if (plan is null)
+            {
+                plan = new MonthlyPlan
+                {
+                    StudentId = student.Id, TutorId = student.TutorId.Value, Year = year, Month = month,
+                    PostClassExpectations = rules.PlanExpectationsTemplate
+                };
+                db.Plans.Add(plan);
+            }
+
+            db.PlanGoals.RemoveRange(plan.Goals);
+            plan.Goals = new List<PlanGoal>();
+            for (var week = 1; week <= Weeks; week++)
+            {
+                foreach (var track in Tracks)
+                {
+                    var value = Request.Form[$"g_{student.Id}_{week}_{(int)track}"].ToString().Trim();
+                    if (value.Length > 200) value = value[..200];
+                    plan.Goals.Add(new PlanGoal { Week = week, Track = track, Text = value.Length == 0 ? NotApplicable : value });
+                }
+            }
+
+            if (mode == "publish")
+            {
+                plan.Status = PublishStatus.Published;
+                plan.PublishedAtUtc ??= DateTime.UtcNow;
+            }
+            saved++;
         }
 
-        plan.Goal = model.Goal ?? ""; plan.MonthGoals = model.MonthGoals ?? ""; plan.PostClassExpectations = model.PostClassExpectations ?? "";
-        plan.DailyTilawahFocus = model.DailyTilawahFocus ?? ""; plan.ClassFormat = model.ClassFormat ?? ""; plan.ParentNotes = model.ParentNotes ?? "";
-
-        db.PlanRows.RemoveRange(plan.Rows);
-        plan.Rows = rows;
         await db.SaveChangesAsync();
+        await audit.LogAsync(mode == "publish" ? "PlansPublished" : "PlansSaved", $"{year}-{month:D2}", $"{saved} plan(s)");
 
-        await audit.LogAsync("PlanSaved", student.StudentCode, Fmt(model.Year, model.Month));
-        TempData["Saved"] = "Plan saved as a draft. Publish it when it is ready, so the parent can see it.";
-        return RedirectToAction(nameof(Edit), new { studentId = model.StudentId, year = model.Year, month = model.Month });
+        TempData["Saved"] = mode == "publish"
+            ? $"{saved} plan(s) saved and published. Parents can now see them."
+            : $"{saved} plan(s) saved as drafts.";
+        if (skipped.Count > 0) TempData["Warning"] = "No tutor is assigned to: " + string.Join(", ", skipped) + ".";
+        return RedirectToAction(nameof(Index), new { year, month, studentId });
     }
 
-    [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Publish(Guid id)
-    {
-        var plan = await db.Plans.Include(p => p.Student).FirstOrDefaultAsync(p => p.Id == id);
-        if (plan?.Student is null) return NotFound();
-        if (!await CanWriteAsync(plan.Student)) return Forbid();
+    // ---------- Downloads ----------
 
-        plan.Status = PublishStatus.Published;
-        plan.PublishedAtUtc = DateTime.UtcNow;
-        await db.SaveChangesAsync();
-        await audit.LogAsync("PlanPublished", plan.Student.StudentCode, Fmt(plan.Year, plan.Month));
-        TempData["Saved"] = "Plan published.";
-        return RedirectToAction(nameof(Show), new { id });
-    }
-
-    /// <summary>Publish from the edit page, by student and month.</summary>
-    [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> PublishFor(Guid studentId, int year, int month)
+    /// <summary>One PDF for each student, in one zip file.</summary>
+    public async Task<IActionResult> DownloadAll(int year, int month, Guid? studentId)
     {
-        var plan = await db.Plans.Include(p => p.Student).FirstOrDefaultAsync(p => p.StudentId == studentId && p.Year == year && p.Month == month);
-        if (plan?.Student is null)
+        if (!me.IsStaff && !me.IsTutor) return Forbid();
+        var students = await WritableStudentsAsync(studentId);
+        var ids = students.Select(s => s.Id).ToList();
+        var plans = await db.Plans.AsNoTracking().Include(p => p.Student)
+            .Where(p => ids.Contains(p.StudentId) && p.Year == year && p.Month == month)
+            .OrderBy(p => p.Student!.FullName).ToListAsync();
+
+        if (plans.Count == 0)
         {
-            TempData["Warning"] = "Save the plan first, then publish it.";
-            return RedirectToAction(nameof(Edit), new { studentId, year, month });
+            TempData["Warning"] = "There are no saved plans for that month yet. Save the grid first.";
+            return RedirectToAction(nameof(Index), new { year, month, studentId });
         }
-        return await Publish(plan.Id);
+
+        var monthText = new DateTime(year, month, 1).ToString("MMMM yyyy");
+        using var stream = new MemoryStream();
+        using (var zip = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var plan in plans)
+            {
+                var safe = new string((plan.Student?.FullName ?? "Student").Where(c => char.IsLetterOrDigit(c) || c is ' ' or '-' or '_').ToArray()).Trim();
+                var name = $"{safe} - {monthText}.pdf";
+                if (!used.Add(name)) name = $"{safe} ({plan.Student?.StudentCode}) - {monthText}.pdf";
+
+                var bytes = await pdf.PlanPdfAsync(plan.Id);
+                var entry = zip.CreateEntry(name, CompressionLevel.Fastest);
+                await using var entryStream = entry.Open();
+                await entryStream.WriteAsync(bytes);
+            }
+        }
+
+        await audit.LogAsync("PlansDownloaded", $"{year}-{month:D2}", $"{plans.Count} PDF(s)");
+        return File(stream.ToArray(), "application/zip", $"Monthly-Plans-{year}-{month:D2}.zip");
     }
 
-    // ---------- Read ----------
+    // ---------- One plan: view, publish, PDF ----------
 
     private async Task<(MonthlyPlan? Plan, IActionResult? Denied)> LoadForReadAsync(Guid id)
     {
-        var plan = await db.Plans.AsNoTracking().Include(p => p.Student).Include(p => p.Tutor).Include(p => p.Rows).FirstOrDefaultAsync(p => p.Id == id);
+        var plan = await db.Plans.AsNoTracking().Include(p => p.Student).Include(p => p.Tutor).Include(p => p.Goals).FirstOrDefaultAsync(p => p.Id == id);
         if (plan?.Student is null) return (null, NotFound());
         if (!await me.CanSeeStudentAsync(plan.Student)) return (null, Forbid());
         if (me.IsStudent)
         {
             if (plan.Status != PublishStatus.Published) return (null, NotFound());
             // Only the plan locks when the portal fee is overdue past the grace period. Join class never locks.
-            if (FeeRules.StateOf(plan.Student, await settings.GetSystemAsync()) == FeeState.Locked) return (null, RedirectToAction("Locked"));
+            if (FeeRules.StateOf(plan.Student, await settings.GetSystemAsync()) == FeeState.Locked) return (null, RedirectToAction(nameof(Locked)));
         }
         return (plan, null);
     }
@@ -171,54 +224,39 @@ public class PlansController(
         var (plan, denied) = await LoadForReadAsync(id);
         if (denied is not null) return denied;
         var bytes = await pdf.PlanPdfAsync(id);
-        return File(bytes, "application/pdf", $"Monthly-Plan-{plan!.Student!.StudentCode}-{plan.Year}-{plan.Month:D2}.pdf");
+        return File(bytes, "application/pdf", $"{plan!.Student!.FullName} - {new DateTime(plan.Year, plan.Month, 1):MMMM yyyy}.pdf");
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Publish(Guid id)
+    {
+        var plan = await db.Plans.Include(p => p.Student).FirstOrDefaultAsync(p => p.Id == id);
+        if (plan?.Student is null) return NotFound();
+        var allowed = me.Can(Permissions.ManageSchedules) || (me.IsTutor && plan.Student.TutorId == (await me.TutorAsync())?.Id);
+        if (!allowed) return Forbid();
+
+        plan.Status = PublishStatus.Published;
+        plan.PublishedAtUtc ??= DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        await audit.LogAsync("PlanPublished", plan.Student.StudentCode, $"{plan.Year}-{plan.Month:D2}");
+        TempData["Saved"] = "Plan published.";
+        return RedirectToAction(nameof(Show), new { id });
+    }
+
+    /// <summary>Every plan written so far, newest first (tutors and staff).</summary>
+    public async Task<IActionResult> History(int page = 1)
+    {
+        if (!me.IsStaff && !me.IsTutor) return Forbid();
+        var query = db.Plans.AsNoTracking().Include(p => p.Student).AsQueryable();
+        if (me.IsTutor)
+        {
+            var tutor = await me.TutorAsync();
+            query = query.Where(p => p.TutorId == tutor!.Id);
+        }
+        var (items, info) = await query.OrderByDescending(p => p.Year).ThenByDescending(p => p.Month).ThenBy(p => p.Student!.FullName).PageAsync(page, 20);
+        ViewBag.PageInfo = info;
+        return View(items);
     }
 
     public IActionResult Locked() => View();
-
-    // ---------- Helpers ----------
-
-    private static string Fmt(int y, int m) => $"{y}-{m:D2}";
-
-    private static string RowsToText(IEnumerable<PlanRow> rows) =>
-        string.Join("\n", rows.OrderBy(r => r.SessionFrom).Select(r =>
-            $"{(r.SessionFrom == r.SessionTo ? r.SessionFrom.ToString() : $"{r.SessionFrom}-{r.SessionTo}")} | {r.Content} | {r.Activity} | {r.Murajaah}"));
-
-    private static List<PlanRow> ParseRows(string? text, out string? error)
-    {
-        error = null;
-        var rows = new List<PlanRow>();
-        var n = 0;
-        foreach (var raw in (text ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-        {
-            n++;
-            var parts = raw.Split('|', StringSplitOptions.TrimEntries);
-            var match = RangePattern.Match(parts[0]);
-            if (!match.Success) { error = $"Line {n}: start with the session number, for example 1-2 | content | activity | muraja'ah."; return rows; }
-            var from = int.Parse(match.Groups[1].Value);
-            var to = match.Groups[2].Success ? int.Parse(match.Groups[2].Value) : from;
-            if (to < from) { error = $"Line {n}: the second session number must not be smaller than the first."; return rows; }
-            rows.Add(new PlanRow
-            {
-                SessionFrom = from, SessionTo = to,
-                Content = parts.Length > 1 ? parts[1] : "", Activity = parts.Length > 2 ? parts[2] : "", Murajaah = parts.Length > 3 ? parts[3] : ""
-            });
-        }
-        return rows;
-    }
-
-    /// <summary>"30-minute sessions on Tuesday and Saturday", made from the student's weekly schedule.</summary>
-    private async Task<string> ClassFormatAsync(Guid studentId, DateOnly today)
-    {
-        var slots = await db.Schedules.AsNoTracking().Where(s => s.StudentId == studentId && (s.EffectiveTo == null || s.EffectiveTo >= today)).ToListAsync();
-        if (slots.Count == 0) return string.Empty;
-
-        var parts = slots.GroupBy(s => s.DurationMinutes).Select(g =>
-        {
-            var days = g.Select(x => x.DayOfWeek.ToString()).Distinct().ToList();
-            var dayText = days.Count == 1 ? days[0] : string.Join(", ", days.Take(days.Count - 1)) + " and " + days[^1];
-            return $"{g.Key}-minute sessions on {dayText}";
-        });
-        return string.Join("; ", parts);
-    }
 }

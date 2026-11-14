@@ -1,0 +1,26 @@
+@model List<Enquiry>
+@{ ViewData["Title"] = "Enquiries"; int newCount = ViewBag.NewCount; EnquiryStatus? current = ViewBag.Status; var names = (Dictionary<Guid, string>)ViewBag.SupervisorNames; }
+<header class="page-head"><h1>Enquiries and trial classes</h1><p class="page-sub">@newCount new · families who asked about classes through the public form.</p></header>
+<div class="d-flex flex-wrap gap-2 mb-3">
+    <a class="btn @(current is null ? "btn-primary" : "btn-outline-secondary") btn-sm" asp-route-status="">All</a>
+    @foreach (var s in Enum.GetValues<EnquiryStatus>()) { <a class="btn @(current == s ? "btn-primary" : "btn-outline-secondary") btn-sm" asp-route-status="@s">@s</a> }
+    <span class="muted small ms-auto align-self-center">Share this link with new families: <strong>/Enquiry</strong></span>
+</div>
+@if (Model.Count == 0) { <p class="empty-note"><i class="bi bi-inbox" aria-hidden="true"></i> No enquiries here.</p> }
+else
+{
+    <div class="table-card table-responsive"><table class="table align-middle">
+        <thead><tr><th>Received</th><th>Student</th><th>Parent</th><th>Country</th><th>Level</th><th>Handled by</th><th>Status</th></tr></thead>
+        <tbody>
+        @foreach (var e in Model)
+        {
+            <tr><td class="text-nowrap">@e.CreatedAtUtc.ToString("d MMM yyyy")</td>
+                <td><a asp-action="Details" asp-route-id="@e.Id">@e.StudentName</a>@(e.StudentAge is { } age ? $" ({age})" : "")</td>
+                <td>@e.ParentName</td><td>@e.Country</td><td>@e.Level</td>
+                <td>@(e.SupervisorId is { } sid && names.TryGetValue(sid, out var who) ? who : "Not taken yet")</td>
+                <td><span class="badge-status s-@(e.Status == EnquiryStatus.New ? "pending" : e.Status == EnquiryStatus.Enrolled ? "completed" : e.Status == EnquiryStatus.Declined ? "cancelled" : "scheduled")">@e.Status</span></td></tr>
+        }
+        </tbody>
+    </table></div>
+}
+<partial name="_Pager" model="(PageInfo)ViewBag.PageInfo" />

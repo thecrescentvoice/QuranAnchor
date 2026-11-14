@@ -15,4 +15,5 @@ public class AuditLogPageViewModel
     public IReadOnlyList<AuditLog> Items { get; set; } = Array.Empty<AuditLog>();
     public int Page { get; set; }
     public int TotalPages { get; set; }
+    public int Total { get; set; }
 }

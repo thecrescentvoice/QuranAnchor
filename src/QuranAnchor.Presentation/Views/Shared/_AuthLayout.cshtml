@@ -25,7 +25,7 @@
             }
         </div>
 
-        <section class="auth-card">
+        <section class="auth-card @(ViewData["Wide"] is true ? "wide" : "")">
             @RenderBody()
         </section>
     </main>

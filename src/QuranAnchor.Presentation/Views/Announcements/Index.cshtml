@@ -1,16 +1,33 @@
 @model List<Announcement>
 @inject QuranAnchor.Presentation.Services.CurrentUser Me
-@{ ViewData["Title"] = "Announcements"; }
+@{ ViewData["Title"] = "Announcements"; var canManage = Me.Can(Permissions.PostAnnouncements); }
 <header class="page-head d-flex justify-content-between align-items-start flex-wrap gap-2">
-    <div><h1>Announcements</h1></div>
-    @if (Me.Can(Permissions.PostAnnouncements)) { <a class="btn btn-primary" asp-action="Create">New announcement</a> }
+    <div><h1>Announcements</h1><p class="page-sub">News, notices and flyers from the academy.</p></div>
+    @if (canManage) { <a class="btn btn-primary" asp-action="Create"><i class="bi bi-plus-lg" aria-hidden="true"></i> New announcement</a> }
 </header>
-@if (Model.Count == 0) { <p class="empty-note">No announcements yet.</p> }
+@if (Model.Count == 0) { <p class="empty-note"><i class="bi bi-megaphone" aria-hidden="true"></i> No announcements yet.</p> }
 @foreach (var a in Model)
 {
-    <article class="panel section">
-        <h2 class="h5 mb-1">@a.Title</h2>
-        <p class="muted small mb-2">@a.CreatedAtUtc.ToString("d MMM yyyy") · @a.CreatedBy · for @a.Audience</p>
-        <p class="mb-0" style="white-space:pre-line">@a.Body</p>
+    <article class="panel section announcement">
+        <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+            <div>
+                <h2 class="h5 mb-1" style="text-transform:none;letter-spacing:0;color:var(--qa-ink)">@a.Title</h2>
+                <p class="muted small mb-2">@a.CreatedAtUtc.ToString("d MMM yyyy") · @a.CreatedBy · for @a.Audience@(a.UpdatedAtUtc is { } u ? $" · edited {u:d MMM yyyy}" : "")</p>
+            </div>
+            @if (canManage)
+            {
+                <div class="d-flex gap-2 no-print">
+                    <a class="btn btn-outline-secondary btn-sm" asp-action="Edit" asp-route-id="@a.Id"><i class="bi bi-pencil" aria-hidden="true"></i> Edit</a>
+                    <form asp-action="Delete" asp-route-id="@a.Id" method="post" onsubmit="return confirm('Delete this announcement? This cannot be undone.');"><button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash" aria-hidden="true"></i> Delete</button></form>
+                </div>
+            }
+        </div>
+        <p style="white-space:pre-line">@Fmt.Linkify(a.Body)</p>
+        @if (Fmt.VideoLink(a.Body) is { } video)
+        {
+            <p><a class="btn btn-outline-secondary btn-sm" href="@video" target="_blank" rel="noopener noreferrer"><i class="bi bi-play-circle" aria-hidden="true"></i> Watch the video</a></p>
+        }
+                <partial name="_FlyerBlock" model="a" />
     </article>
 }
+<partial name="_Pager" model="(PageInfo)ViewBag.PageInfo" />

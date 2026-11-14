@@ -8,6 +8,10 @@
         <div><label asp-for="Email" class="form-label"></label><input asp-for="Email" type="email" class="form-control" /><span asp-validation-for="Email" class="field-error"></span></div>
         <div><label asp-for="Phone" class="form-label"></label><input asp-for="Phone" class="form-control" /></div>
         <div><label asp-for="TimeZoneId" class="form-label"></label><select asp-for="TimeZoneId" asp-items="zones" class="form-select"></select></div>
+        @if (ViewBag.Supervisors is List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> sups)
+        {
+            <div><label asp-for="SupervisorId" class="form-label"></label><select asp-for="SupervisorId" asp-items="sups" class="form-select"><option value="">Not assigned</option></select></div>
+        }
     </div>
     <button class="btn btn-primary btn-lg" type="submit">Create tutor</button>
     <a class="btn btn-link" asp-action="Index">Cancel</a>

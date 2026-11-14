@@ -1,0 +1,67 @@
+@model Invoice
+@inject QuranAnchor.Presentation.Services.CurrentUser Me
+@{
+    ViewData["Title"] = "Invoice";
+    var brand = (QuranAnchor.Application.Models.BrandingSettings)ViewBag.Brand;
+    var today = DateOnly.FromDateTime(DateTime.UtcNow);
+    var st = Model.StatusText(today);
+    var canManage = Me.Can(Permissions.ManageInvoices);
+}
+<div class="d-flex flex-wrap gap-2 mb-3 no-print">
+    <button type="button" class="btn btn-primary" onclick="window.print()"><i class="bi bi-printer" aria-hidden="true"></i> Print or save as PDF</button>
+    @if (canManage)
+    {
+        <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" onsubmit="return confirm('Change the status of this invoice?');"><button class="btn btn-outline-danger">@(Model.IsCancelled ? "Restore" : "Cancel invoice")</button></form>
+    }
+    <a class="btn btn-link" asp-action="Index">All invoices</a>
+</div>
+
+<article class="panel invoice">
+    <div class="d-flex justify-content-between flex-wrap gap-2">
+        <div><div class="small-label">Invoice</div><h1 class="h3 mb-0">@Model.Number</h1></div>
+        <div class="text-end"><strong>@brand.AcademyName</strong><br /><span class="badge-status @(st == "Paid" ? "s-completed" : st == "Overdue" ? "s-nothel" : st == "Cancelled" ? "s-cancelled" : "s-pending")">@st</span></div>
+    </div>
+    <hr />
+    <dl class="kv">
+        <dt>Student</dt><dd>@Model.Student?.FullName (@Model.Student?.StudentCode)</dd>
+        <dt>For</dt><dd>@Model.Description</dd>
+        <dt>Issued</dt><dd>@Model.CreatedAtUtc.ToString("d MMM yyyy")</dd>
+        <dt>Due</dt><dd>@Model.DueDate.ToString("d MMM yyyy")</dd>
+        <dt>Amount</dt><dd><strong>@Fmt.Money(Model.Currency, Model.Amount)</strong></dd>
+        <dt>Paid so far</dt><dd>@Fmt.Money(Model.Currency, Model.PaidAmount)</dd>
+        <dt>Balance</dt><dd><strong>@Fmt.Money(Model.Currency, Model.Balance)</strong></dd>
+    </dl>
+    @if (Model.Balance > 0 && !Model.IsCancelled)
+    {
+        <div class="banner banner-warn mt-3 mb-0"><strong>How to pay</strong><br /><span style="white-space:pre-line">@(string.IsNullOrWhiteSpace(brand.FeeInstructions) ? "Please follow the payment instructions given in the class group, and send proof of payment to the supervisor." : brand.FeeInstructions)</span></div>
+    }
+</article>
+
+<section class="section mt-4">
+    <h2>Payments received</h2>
+    <div class="panel">
+        @if (Model.Payments.Count == 0) { <p class="muted mb-0">Nothing received yet.</p> }
+        <ul class="list-plain">
+            @foreach (var p in Model.Payments.OrderBy(x => x.PaidOn))
+            {
+                <li><span><strong>@Fmt.Money(Model.Currency, p.Amount)</strong> · @p.PaidOn.ToString("d MMM yyyy") · @p.Method@(string.IsNullOrEmpty(p.Reference) ? "" : " · " + p.Reference)</span><span class="muted small">recorded by @p.RecordedBy</span></li>
+            }
+        </ul>
+    </div>
+</section>
+
+@if (canManage && !Model.IsCancelled && Model.Balance > 0)
+{
+    <section class="section no-print">
+        <h2>Record a payment received</h2>
+        <form asp-action="RecordPayment" asp-route-id="@Model.Id" method="post" class="panel">
+            <div class="form-grid">
+                <div><label class="form-label" for="amount">Amount (@Model.Currency)</label><input id="amount" name="amount" type="number" step="0.01" min="0.01" value="@Model.Balance.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)" class="form-control" required /></div>
+                <div><label class="form-label" for="paidOn">Date received</label><input id="paidOn" name="paidOn" type="date" value="@DateTime.UtcNow.ToString("yyyy-MM-dd")" class="form-control" required /></div>
+                <div><label class="form-label" for="method">Method</label><select id="method" name="method" class="form-select"><option>Bank transfer</option><option>Cash</option><option>Card</option><option>Other</option></select></div>
+                <div><label class="form-label" for="reference">Reference (optional)</label><input id="reference" name="reference" class="form-control" /></div>
+            </div>
+            <button class="btn btn-primary mt-3" type="submit">Record payment</button>
+        </form>
+    </section>
+}

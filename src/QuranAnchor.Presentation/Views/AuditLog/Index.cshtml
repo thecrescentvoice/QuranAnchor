@@ -42,15 +42,5 @@ else
         </table>
     </div>
 
-    <nav class="pager" aria-label="Audit log pages">
-        @if (Model.Page > 1)
-        {
-            <a asp-action="Index" asp-route-page="@(Model.Page - 1)">Newer</a>
-        }
-        <span>Page @Model.Page of @Model.TotalPages</span>
-        @if (Model.Page < Model.TotalPages)
-        {
-            <a asp-action="Index" asp-route-page="@(Model.Page + 1)">Older</a>
-        }
-    </nav>
+    <partial name="_Pager" model="new PageInfo(Model.Page, Model.TotalPages, Model.Total, 50)" />
 }

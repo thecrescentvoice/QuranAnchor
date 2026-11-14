@@ -24,7 +24,24 @@
 
 @if (Me.IsStaff)
 {
+@if (ViewBag.HandOverOptions is List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> handOver && handOver.Count > 0)
+    {
+        <form asp-action="HandOver" asp-route-id="@Model.Student.Id" method="post" class="panel section no-print" onsubmit="return confirm('Hand this over? You will no longer see it.');">
+            <div class="rate-row">
+                <label class="muted" for="handOverTo">Hand over to another supervisor</label>
+                <select id="handOverTo" name="supervisorId" class="form-select" style="max-width:16rem" required><option value="">Choose a supervisor</option>@foreach (var o in handOver) { <option value="@o.Value">@o.Text</option> }</select>
+                <button class="btn btn-outline-secondary" type="submit">Hand over</button>
+            </div>
+            <div class="form-text">Only students who have no tutor yet can be handed over on their own. The other supervisor is emailed.</div>
+        </form>
+    }
+    @if (ViewBag.HandOverHint is string handOverHint)
+    {
+        <p class="muted small no-print">@handOverHint</p>
+    }
+
     <div class="d-flex flex-wrap gap-2 section no-print">
+        @if (Me.Can(Permissions.ReplaceTutor)) { <a class="btn btn-outline-secondary" asp-action="ChangeTutor" asp-route-id="@Model.Student.Id"><i class="bi bi-arrow-left-right" aria-hidden="true"></i> Change tutor</a> }
         @if (Me.Can(Permissions.EditAccounts)) { <a class="btn btn-outline-secondary" asp-action="Edit" asp-route-id="@s.Id">Edit</a> }
         @if (s.Status == AccountStatus.Deactivated)
         {
@@ -66,6 +83,8 @@
                 <dt>Country</dt><dd>@s.Country</dd>
                 <dt>Time zone</dt><dd>@s.TimeZoneId</dd>
                 <dt>Sessions per month</dt><dd>@s.SessionsPerMonth</dd>
+                <dt>Supervisor</dt><dd>@ViewBag.SupervisorName</dd>
+                <dt>Class fee</dt><dd>@(s.ClassFeeAmount > 0 ? Fmt.Money(s.ClassFeeCurrency, s.ClassFeeAmount) + " a month" : "Not set")</dd>
                 <dt>Portal fee</dt><dd>@(Model.Fee switch { FeeState.Paid => "Paid", FeeState.Exempt => "Waived", FeeState.Overdue => "Overdue (grace period)", _ => "Locked" })@(s.PaidUntilUtc is { } u ? $" · until {u:d MMM yyyy}" : "")</dd>
             </dl>
         </div>
@@ -185,7 +204,7 @@
     <div class="col-md-6">
         <div class="panel h-100">
             <div class="small-label mb-2">Monthly plans</div>
-            @if (Me.IsStaff || Me.IsTutor) { <p><a asp-controller="Plans" asp-action="Edit" asp-route-studentId="@s.Id">Write or edit this month's plan</a></p> }
+            @if (Me.IsStaff || Me.IsTutor) { <p><a asp-controller="Plans" asp-action="Index" asp-route-studentId="@s.Id">Write or edit this month's plan</a></p> }
             <ul class="list-plain">@foreach (var p in Model.Plans) { <li><a asp-controller="Plans" asp-action="Show" asp-route-id="@p.Id">@Fmt.Month(p.Year, p.Month)</a><span class="badge-status s-@p.Status.ToString().ToLower()">@p.Status</span></li> }</ul>
         </div>
     </div>

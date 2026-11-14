@@ -1,0 +1,22 @@
+@model List<MonthlyPlan>
+@{ ViewData["Title"] = "All plans"; }
+<header class="page-head d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div><h1>All plans</h1><p class="page-sub">Every plan written so far, newest first.</p></div>
+    <a class="btn btn-outline-secondary btn-sm" asp-action="Index">Back to the grid</a>
+</header>
+@if (Model.Count == 0) { <p class="empty-note"><i class="bi bi-journal-text" aria-hidden="true"></i> No plans yet.</p> }
+else
+{
+    <div class="table-card table-responsive"><table class="table align-middle">
+        <thead><tr><th>Month</th><th>Student</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var p in Model)
+        {
+            <tr><td>@Fmt.Month(p.Year, p.Month)</td><td>@p.Student?.FullName</td>
+                <td><span class="badge-status s-@p.Status.ToString().ToLower()">@p.Status</span></td>
+                <td class="text-end"><a asp-action="Show" asp-route-id="@p.Id">Open</a> · <a asp-action="Index" asp-route-year="@p.Year" asp-route-month="@p.Month" asp-route-studentId="@p.StudentId">Edit</a></td></tr>
+        }
+        </tbody>
+    </table></div>
+}
+<partial name="_Pager" model="(PageInfo)ViewBag.PageInfo" />

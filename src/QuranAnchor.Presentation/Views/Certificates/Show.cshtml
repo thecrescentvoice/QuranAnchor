@@ -1,0 +1,36 @@
+@model Certificate
+@inject QuranAnchor.Application.Abstractions.ISettingsService Settings
+@inject QuranAnchor.Presentation.Services.CurrentUser Me
+@{
+    ViewData["Title"] = "Certificate";
+    var b = await Settings.GetBrandingAsync();
+}
+<div class="d-flex flex-wrap gap-2 mb-3 no-print">
+    <a class="btn btn-primary" asp-action="Pdf" asp-route-id="@Model.Id"><i class="bi bi-download" aria-hidden="true"></i> Download PDF</a>
+    <a class="btn btn-outline-secondary" asp-action="Verify" asp-route-id="@Model.Code" target="_blank" rel="noopener">Open the public check page</a>
+    @if (Me.Can(Permissions.ManageSchedules))
+    {
+        <form asp-action="Revoke" asp-route-id="@Model.Id" method="post" onsubmit="return confirm('Change the status of this certificate?');"><button class="btn btn-outline-danger">@(Model.IsRevoked ? "Restore" : "Withdraw")</button></form>
+    }
+    <a class="btn btn-link" asp-action="Index">All certificates</a>
+</div>
+
+<article class="certificate @(Model.IsRevoked ? "revoked" : "")">
+    <div class="certificate-band"><span></span><span></span><span></span></div>
+    <div class="certificate-body">
+        <p class="ar certificate-bismillah" dir="rtl">بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</p>
+        <h1>Certificate of Achievement</h1>
+        <p class="muted">@b.AcademyName</p>
+        <p class="certificate-small">This certificate is proudly presented to</p>
+        <p class="certificate-name">@Model.Student?.FullName</p>
+        <p class="certificate-small">in recognition of</p>
+        <p class="certificate-title">@Model.Title</p>
+        @if (!string.IsNullOrWhiteSpace(Model.Description)) { <p class="muted">@Model.Description</p> }
+        <div class="certificate-sign">
+            <div><span>@Model.IssuedOn.ToString("d MMMM yyyy")</span><small>Date</small></div>
+            <div><span>@Model.IssuedByName</span><small>Tutor</small></div>
+        </div>
+        <p class="certificate-code">Certificate no. @Model.Code</p>
+        @if (Model.IsRevoked) { <p class="certificate-stamp">WITHDRAWN</p> }
+    </div>
+</article>

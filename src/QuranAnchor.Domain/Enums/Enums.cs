@@ -9,4 +9,7 @@ public enum OnTrackStatus { OnTrack = 1, NeedsSupport = 2, Behind = 3 }
 public enum RequestStatus { Pending = 1, Accepted = 2, Declined = 3, Cancelled = 4 }
 public enum PublishStatus { Draft = 1, Published = 2 }
 public enum PaymentStatus { Pending = 1, Succeeded = 2, Failed = 3 }
+/// <summary>The four things a monthly plan sets goals for.</summary>
+public enum PlanTrack { Hifz = 1, Qiraah = 2, Murajaah = 3, Tajweed = 4 }
+public enum EnquiryStatus { New = 1, Contacted = 2, TrialScheduled = 3, Enrolled = 4, Declined = 5 }
 public enum AnnouncementAudience { Everyone = 1, Tutors = 2, Students = 3 }

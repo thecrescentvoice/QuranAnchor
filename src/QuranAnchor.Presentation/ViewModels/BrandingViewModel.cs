@@ -43,6 +43,10 @@ public class BrandingViewModel
     [Display(Name = "Accent colour")]
     public string AccentColor { get; set; } = string.Empty;
 
+    [StringLength(1500)]
+    [Display(Name = "Class fee payment instructions (shown on invoices)")]
+    public string FeeInstructions { get; set; } = string.Empty;
+
     [Display(Name = "Logo")]
     public IFormFile? LogoFile { get; set; }
 
@@ -61,6 +65,7 @@ public class BrandingViewModel
         IdPrefix = b.IdPrefix,
         PrimaryColor = b.PrimaryColor,
         AccentColor = b.AccentColor,
-        LogoPath = b.LogoPath
+        LogoPath = b.LogoPath,
+        FeeInstructions = b.FeeInstructions
     };
 }

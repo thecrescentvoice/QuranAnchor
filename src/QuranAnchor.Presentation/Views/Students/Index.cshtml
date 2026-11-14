@@ -2,7 +2,7 @@
 @inject QuranAnchor.Presentation.Services.CurrentUser Me
 @{ ViewData["Title"] = Me.IsTutor ? "My students" : "Students"; }
 <header class="page-head d-flex justify-content-between align-items-start flex-wrap gap-2">
-    <div><h1>@ViewData["Title"]</h1><p class="page-sub">@Model.Count student(s)</p></div>
+    <div><h1>@ViewData["Title"]</h1><p class="page-sub">@(((PageInfo)ViewBag.PageInfo).Total) student(s)</p></div>
     @if (Me.Can(Permissions.CreateAccounts)) { <a class="btn btn-primary" asp-action="Create">New student</a> }
 </header>
 
@@ -32,3 +32,5 @@
         </tbody>
     </table>
 </div>
+
+<partial name="_Pager" model="(PageInfo)ViewBag.PageInfo" />

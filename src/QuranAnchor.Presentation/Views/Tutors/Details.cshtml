@@ -6,7 +6,19 @@
     var summary = ViewBag.Summary as TutorSummary;
     var checklist = (TempData["RotateChecklist"] as string ?? "").Split('|', StringSplitOptions.RemoveEmptyEntries);
 }
-<header class="page-head"><h1>@Model.FullName <span class="badge-status s-@Model.Status.ToString().ToLower()">@Model.Status</span></h1><p class="page-sub">@Model.TutorCode · @Model.Email · @Model.TimeZoneId</p></header>
+<header class="page-head"><h1>@Model.FullName <span class="badge-status s-@Model.Status.ToString().ToLower()">@Model.Status</span></h1><p class="page-sub">@Model.TutorCode · @Model.Email · @Model.TimeZoneId · Supervisor: @ViewBag.SupervisorName</p></header>
+
+@if (ViewBag.Supervisors is List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> supervisorOptions)
+{
+    <form asp-action="AssignSupervisor" asp-route-id="@Model.Id" method="post" class="panel section no-print">
+        <div class="rate-row">
+            <label class="muted" for="supervisorId">Supervisor in charge</label>
+            <select id="supervisorId" name="supervisorId" class="form-select" style="max-width:16rem"><option value="">Not assigned</option>@foreach (var o in supervisorOptions) { <option value="@o.Value" selected="@(o.Text == (string)ViewBag.SupervisorName)">@o.Text</option> }</select>
+            <button class="btn btn-outline-secondary" type="submit">Save</button>
+        </div>
+        <div class="form-text">This tutor's students move to the same supervisor.</div>
+    </form>
+}
 
 @if (checklist.Length > 0)
 {
@@ -34,6 +46,18 @@
             <dt>Hours</dt><dd>@summary.Hours</dd><dt>Feedback missing</dt><dd>@summary.FeedbackMissing</dd><dt>Earned</dt><dd>@summary.Amount.ToString("₦#,##0.00")</dd>
         </dl></div>
     </section>
+}
+
+@if (ViewBag.HandOverOptions is List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> handOver && handOver.Count > 0)
+{
+    <form asp-action="HandOver" asp-route-id="@Model.Id" method="post" class="panel section no-print" onsubmit="return confirm('Hand this over? You will no longer see it.');">
+        <div class="rate-row">
+            <label class="muted" for="handOverTo">Hand over to another supervisor</label>
+            <select id="handOverTo" name="supervisorId" class="form-select" style="max-width:16rem" required><option value="">Choose a supervisor</option>@foreach (var o in handOver) { <option value="@o.Value">@o.Text</option> }</select>
+            <button class="btn btn-outline-secondary" type="submit">Hand over</button>
+        </div>
+        <div class="form-text">All of this tutor's students move with the tutor. The other supervisor is emailed.</div>
+    </form>
 }
 
 <section class="section"><h2>Students (@students.Count)</h2>

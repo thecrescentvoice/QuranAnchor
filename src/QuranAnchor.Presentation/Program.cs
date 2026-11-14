@@ -9,6 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddPermissionPolicies();
 builder.Services.AddScoped<QuranAnchor.Presentation.Services.CurrentUser>();
+builder.Services.AddScoped<QuranAnchor.Presentation.Services.SupervisorDirectory>();
 
 builder.Services.AddControllersWithViews(options =>
 {

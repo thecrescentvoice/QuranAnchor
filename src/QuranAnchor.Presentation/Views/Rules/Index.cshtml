@@ -40,5 +40,16 @@
         <div class="mb-3"><label asp-for="PlanParentNotesTemplate" class="form-label"></label><textarea asp-for="PlanParentNotesTemplate" class="form-control" rows="4"></textarea></div>
     </fieldset>
 
+    <fieldset class="section"><legend class="h5">Monthly plan dropdowns</legend>
+        <p class="muted">The suggestions tutors see in the plan grid. Tutors can still type their own goal.</p>
+        <div class="form-grid">
+            <div><label asp-for="PlanHifzOptions" class="form-label"></label><textarea asp-for="PlanHifzOptions" class="form-control" rows="6"></textarea></div>
+            <div><label asp-for="PlanQiraahOptions" class="form-label"></label><textarea asp-for="PlanQiraahOptions" class="form-control" rows="6"></textarea></div>
+            <div><label asp-for="PlanMurajaahOptions" class="form-label"></label><textarea asp-for="PlanMurajaahOptions" class="form-control" rows="6"></textarea></div>
+            <div><label asp-for="PlanTajweedOptions" class="form-label"></label><textarea asp-for="PlanTajweedOptions" class="form-control" rows="6"></textarea></div>
+        </div>
+        <div class="mt-3"><label asp-for="PlanClosingNote" class="form-label"></label><textarea asp-for="PlanClosingNote" class="form-control" rows="3"></textarea></div>
+    </fieldset>
+
     <button class="btn btn-primary btn-lg" type="submit">Save rules</button>
 </form>

@@ -27,7 +27,8 @@ public static class DependencyInjection
         // The only place that names the MySQL provider, so it is easy to swap if needed.
         services.AddDbContext<QuranAnchorDbContext>(options =>
             options.UseMySql(connectionString, serverVersion, mysql =>
-                mysql.MigrationsAssembly(typeof(QuranAnchorDbContext).Assembly.GetName().Name)));
+                mysql.MigrationsAssembly(typeof(QuranAnchorDbContext).Assembly.GetName().Name))
+                .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.CoreEventId.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning)));
 
         services
             .AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
@@ -62,6 +63,7 @@ public static class DependencyInjection
         services.AddMemoryCache();
         services.AddHostedService<DatabaseInitializerHostedService>();
         services.AddHttpContextAccessor();
+        services.AddScoped<ICurrentScope, HttpCurrentScope>();
 
         services.AddScoped<IAuditLogger, AuditLogger>();
         services.AddScoped<ISettingsService, SettingsService>();
