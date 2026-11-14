@@ -46,7 +46,19 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 
+// Cloud hosts terminate HTTPS at their proxy; trust its X-Forwarded-* headers so
+// HTTPS redirection and secure cookies see the original scheme.
+builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
+        | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 var app = builder.Build();
+
+app.UseForwardedHeaders();
 
 if (!app.Environment.IsDevelopment())
 {
