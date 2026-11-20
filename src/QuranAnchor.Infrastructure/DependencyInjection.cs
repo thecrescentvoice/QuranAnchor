@@ -14,17 +14,23 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration config)
     {
-        var connectionString = config.GetConnectionString("Default")
-            ?? throw new InvalidOperationException("The connection string 'Default' is missing.");
+        var connectionString = config.GetConnectionString("Default");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException(
+                "The database connection string is not configured. Set ConnectionStrings__Default in the deployment environment.");
+        }
 
-        // If your server version is not 8.0.36, set Database:ServerVersion (for example "8.4.0-mysql").
-        // Leave it empty to detect it automatically (needs the database to be running).
+        // Keep server detection off the startup path: Railway's database may not yet be reachable
+        // when services are registered. Supply the actual MySQL version with Database:ServerVersion.
         var versionText = config["Database:ServerVersion"];
-        var serverVersion = string.IsNullOrWhiteSpace(versionText)
-            ? ServerVersion.AutoDetect(connectionString)
-            : ServerVersion.Parse(versionText);
+        if (string.IsNullOrWhiteSpace(versionText))
+        {
+            throw new InvalidOperationException(
+                "Database:ServerVersion is not configured. Set it to the Railway MySQL version (for example 8.0.36-mysql).");
+        }
+        var serverVersion = ServerVersion.Parse(versionText);
 
-        // The only place that names the MySQL provider, so it is easy to swap if needed.
         services.AddDbContext<QuranAnchorDbContext>(options =>
             options.UseMySql(connectionString, serverVersion, mysql =>
                 mysql.MigrationsAssembly(typeof(QuranAnchorDbContext).Assembly.GetName().Name))

@@ -1,16 +1,31 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace QuranAnchor.Infrastructure.Persistence;
 
-/// <summary>
-/// Runs the database setup when the web app starts (not when the EF tools build the host).
-/// A failure stops the app from starting, so a broken database is noticed straight away.
-/// </summary>
-public sealed class DatabaseInitializerHostedService(IServiceProvider services, IConfiguration config) : IHostedService
+/// <summary>Runs database setup before the application starts serving requests.</summary>
+public sealed class DatabaseInitializerHostedService(
+    IServiceProvider services,
+    IConfiguration config,
+    ILogger<DatabaseInitializerHostedService> logger) : IHostedService
 {
-    public Task StartAsync(CancellationToken cancellationToken) =>
-        DatabaseInitializer.InitializeAsync(services, config);
+    public async Task StartAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await DatabaseInitializer.InitializeAsync(services, config, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Keep the original exception (including its provider error) in the structured log;
+            // never include connection strings or credential values in the diagnostic message.
+            logger.LogCritical(ex,
+                "Database initialization failed. Verify Railway database networking, ConnectionStrings__Default, " +
+                "Database__ServerVersion, schema/migration state, and database user privileges.");
+            throw;
+        }
+    }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }
