@@ -10,18 +10,34 @@ namespace QuranAnchor.Infrastructure.Persistence;
 public static class DatabaseInitializer
 {
     /// <summary>
-    /// Applies migrations (when Database:AutoMigrate is true), makes sure the five roles exist,
-    /// and creates the first Super Admin from the Seed:SuperAdmin settings if none exists yet.
+    /// Applies migrations only when explicitly enabled, initializes roles and default pricing,
+    /// and optionally creates the first Super Admin from secret configuration.
     /// </summary>
-    public static async Task InitializeAsync(IServiceProvider services, IConfiguration config)
+    public static async Task InitializeAsync(
+        IServiceProvider services,
+        IConfiguration config,
+        CancellationToken cancellationToken = default)
     {
-        using var scope = services.CreateScope();
+        await using var scope = services.CreateAsyncScope();
         var sp = scope.ServiceProvider;
 
         var db = sp.GetRequiredService<QuranAnchorDbContext>();
         if (config.GetValue<bool>("Database:AutoMigrate"))
         {
-            await db.Database.MigrateAsync();
+            await db.Database.MigrateAsync(cancellationToken);
+        }
+        else
+        {
+            // Fail early with an explicit instruction rather than surfacing a later missing-table
+            // error from Identity, seeding or a request. Do not use EnsureCreated: it bypasses migration history.
+            var pendingMigrations = await db.Database.GetPendingMigrationsAsync(cancellationToken);
+            var pending = pendingMigrations.ToArray();
+            if (pending.Length > 0)
+            {
+                throw new InvalidOperationException(
+                    $"The database has {pending.Length} unapplied EF Core migration(s), including '{pending[0]}'. " +
+                    "Apply reviewed migrations before starting, or set Database:AutoMigrate=true after taking a database backup.");
+            }
         }
 
         var roleManager = sp.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
@@ -29,25 +45,31 @@ public static class DatabaseInitializer
         {
             if (!await roleManager.RoleExistsAsync(role))
             {
-                await roleManager.CreateAsync(new IdentityRole<Guid>(role));
+                var result = await roleManager.CreateAsync(new IdentityRole<Guid>(role));
+                if (!result.Succeeded)
+                {
+                    throw new InvalidOperationException(
+                        $"Could not initialize the required '{role}' role: " +
+                        string.Join("; ", result.Errors.Select(e => e.Description)));
+                }
             }
         }
 
         // Starting prices and tutor rates from the PRD. The Super Admin can change them on the Pricing page.
-        if (!await db.PortalPrices.AnyAsync())
+        if (!await db.PortalPrices.AnyAsync(cancellationToken))
         {
             db.PortalPrices.AddRange(
                 new QuranAnchor.Domain.Entities.PortalPrice { Currency = "NGN", Amount = 2000m },
                 new QuranAnchor.Domain.Entities.PortalPrice { Currency = "USD", Amount = 1.50m },
                 new QuranAnchor.Domain.Entities.PortalPrice { Currency = "GBP", Amount = 1.15m });
         }
-        if (!await db.SessionRates.AnyAsync())
+        if (!await db.SessionRates.AnyAsync(cancellationToken))
         {
             db.SessionRates.AddRange(
                 new QuranAnchor.Domain.Entities.SessionRate { DurationMinutes = 30, Amount = 850m },
                 new QuranAnchor.Domain.Entities.SessionRate { DurationMinutes = 45, Amount = 1275m });
         }
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(cancellationToken);
 
         var email = config["Seed:SuperAdmin:Email"];
         var password = config["Seed:SuperAdmin:Password"];
@@ -83,6 +105,15 @@ public static class DatabaseInitializer
                 string.Join("; ", created.Errors.Select(e => e.Description)));
         }
 
-        await users.AddToRoleAsync(user, Roles.SuperAdmin);
+        var addedToRole = await users.AddToRoleAsync(user, Roles.SuperAdmin);
+        if (!addedToRole.Succeeded)
+        {
+            // Avoid leaving a valid account with no administrative role; cleanup is best-effort,
+            // while the role-assignment failure remains the startup error.
+            await users.DeleteAsync(user);
+            throw new InvalidOperationException(
+                "Could not assign the Super Admin role to the initial account: " +
+                string.Join("; ", addedToRole.Errors.Select(e => e.Description)));
+        }
     }
 }
