@@ -1,0 +1,80 @@
+@model PerformanceViewModel
+@{
+    ViewData["Title"] = "Performance";
+    var t = Model.Total;
+    string Pct(double? v) => v is { } x ? Math.Round(x) + "%" : "No data yet";
+    double? R(double? v) => v is { } x ? Math.Round(x) : null;
+    var data = new
+    {
+        labels = Model.Rows.Select(r => r.Label), held = Model.Rows.Select(r => r.Held),
+        written = Model.Rows.Select(r => r.FeedbackWritten), onTime = Model.Rows.Select(r => r.FeedbackOnTime)
+    };
+    var anyData = Model.Rows.Any(r => r.Held + r.StudentAbsent + r.NotHeldOther > 0);
+}
+<header class="page-head d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div>
+        <h1>@(Model.IsOwn ? "My performance" : "Performance: " + Model.Tutor.FullName)</h1>
+        <p class="page-sub">The last @Model.Months months. These numbers come from your classes and feedback, and they are meant to help you see where you are doing well.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap no-print">
+        @foreach (var m in new[] { 3, 6, 12 })
+        {
+            <a class="btn btn-sm @(m == Model.Months ? "btn-primary" : "btn-outline-secondary")" asp-action="Tutor" asp-route-id="@Model.Tutor.Id" asp-route-months="@m">@m months</a>
+        }
+    </div>
+</header>
+
+@if (Model.MissingFeedbackNow > 0)
+{
+    <div class="banner banner-warn"><i class="bi bi-exclamation-circle" aria-hidden="true"></i> <strong>@Model.MissingFeedbackNow class(es) are waiting for feedback.</strong> Open Classes and write them to keep your numbers up.</div>
+}
+
+<div class="row g-3 section">
+    <div class="col-6 col-lg-3"><div class="stat"><span class="stat-icon"><i class="bi bi-camera-video"></i></span><div><div class="small-label">Classes held</div><div class="stat-value">@t.Held</div><div class="small muted">@t.Hours hours with @Model.StudentsTaught student(s)</div></div></div></div>
+    <div class="col-6 col-lg-3"><div class="stat"><span class="stat-icon tone-green"><i class="bi bi-journal-check"></i></span><div><div class="small-label">Feedback written</div><div class="stat-value">@Pct(t.FeedbackRate)</div><div class="small muted">@t.FeedbackWritten of @t.Held classes</div></div></div></div>
+    <div class="col-6 col-lg-3"><div class="stat"><span class="stat-icon tone-cyan"><i class="bi bi-stopwatch"></i></span><div><div class="small-label">Feedback within a day</div><div class="stat-value">@Pct(t.OnTimeRate)</div><div class="small muted">@t.FeedbackOnTime of @t.Held classes</div></div></div></div>
+    <div class="col-6 col-lg-3"><div class="stat"><span class="stat-icon tone-amber"><i class="bi bi-star"></i></span><div><div class="small-label">Parents' rating</div><div class="stat-value">@(Model.RatingRecent is { } rr ? rr.ToString("0.0") + " / 5" : (Model.RatingAll is { } ra ? ra.ToString("0.0") + " / 5" : "No ratings yet"))</div><div class="small muted">@(Model.RatingCount == 0 ? "Parents rate once a month" : $"last 3 months · {Model.RatingCount} rating(s) in all")</div></div></div></div>
+</div>
+
+@if (anyData)
+{
+    <section class="section">
+        <h2>Classes and feedback each month</h2>
+        <div class="panel chart-card"><canvas id="chartPerf" role="img" aria-label="Bar chart of classes held, feedback written and feedback written within a day, for each month"></canvas></div>
+    </section>
+}
+
+<section class="section">
+    <h2>The numbers</h2>
+    <div class="table-card table-responsive"><table class="table align-middle text-center">
+        <thead><tr><th class="text-start">Month</th><th>Held</th><th>Hours</th><th>Student did not come</th><th>Not held (other)</th><th>Feedback written</th><th>Within a day</th></tr></thead>
+        <tbody>
+        @foreach (var r in Model.Rows)
+        {
+            <tr><td class="text-start">@r.Label</td><td>@r.Held</td><td>@r.Hours</td><td>@r.StudentAbsent</td><td>@r.NotHeldOther</td><td>@Pct(r.FeedbackRate)</td><td>@Pct(r.OnTimeRate)</td></tr>
+        }
+        </tbody>
+        <tfoot><tr class="fw-semibold"><td class="text-start">Total</td><td>@t.Held</td><td>@t.Hours</td><td>@t.StudentAbsent</td><td>@t.NotHeldOther</td><td>@Pct(t.FeedbackRate)</td><td>@Pct(t.OnTimeRate)</td></tr></tfoot>
+    </table></div>
+    <p class="form-text">How these are worked out: "Feedback written" is the share of held classes that have feedback. "Within a day" counts feedback written within 24 hours of the class ending. "Student did not come" is shown for information and does not count against you. The rating is the parents' average over the last 3 months, with no comments and no names.</p>
+</section>
+
+@section Scripts {
+    @if (anyData)
+    {
+        <script type="application/json" id="perfData">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(data))</script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+        <script>
+            (function () {
+                if (typeof Chart === 'undefined') { return; }
+                var d = JSON.parse(document.getElementById('perfData').textContent);
+                Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+                new Chart(document.getElementById('chartPerf'), { type: 'bar', data: { labels: d.labels, datasets: [
+                    { label: 'Classes held', data: d.held, backgroundColor: '#5B3FD9' },
+                    { label: 'Feedback written', data: d.written, backgroundColor: '#1F9D6B' },
+                    { label: 'Written within a day', data: d.onTime, backgroundColor: '#0B8F96' }] },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }, plugins: { legend: { position: 'bottom' } } } });
+            })();
+        </script>
+    }
+}

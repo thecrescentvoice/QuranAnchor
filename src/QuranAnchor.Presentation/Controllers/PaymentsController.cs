@@ -40,7 +40,8 @@ public class PaymentsController(
         if (student is null) return Forbid();
 
         var callback = Url.Action(nameof(Callback), "Payments", null, Request.Scheme)!;
-        var result = await payments.StartCheckoutAsync(student.Id, currency, callback);
+        var flutterwaveCallback = Url.Action(nameof(FlutterwaveCallback), "Payments", null, Request.Scheme)!;
+        var result = await payments.StartCheckoutAsync(student.Id, currency, callback, flutterwaveCallback);
         if (!result.Ok || result.Url is null)
         {
             TempData["Warning"] = result.Error;
@@ -60,6 +61,27 @@ public class PaymentsController(
         var result = await payments.VerifyAsync(refToCheck);
         TempData[result.Ok ? "Saved" : "Warning"] = result.Message;
         return RedirectToAction(nameof(Index));
+    }
+
+    /// <summary>Where Flutterwave sends the parent back. We confirm the payment with Flutterwave instead of trusting this address.</summary>
+    [HttpGet]
+    public async Task<IActionResult> FlutterwaveCallback(string? status, string? tx_ref, string? transaction_id)
+    {
+        if (string.IsNullOrWhiteSpace(tx_ref)) return RedirectToAction(nameof(Index));
+
+        var result = await payments.VerifyFlutterwaveAsync(tx_ref, transaction_id);
+        TempData[result.Ok ? "Saved" : "Warning"] = result.Message;
+        return RedirectToAction(nameof(Index));
+    }
+
+    /// <summary>Flutterwave's own confirmation message. It is trusted only if its secret hash matches.</summary>
+    [HttpPost, AllowAnonymous, IgnoreAntiforgeryToken]
+    public async Task<IActionResult> FlutterwaveWebhook()
+    {
+        using var reader = new StreamReader(Request.Body);
+        var body = await reader.ReadToEndAsync();
+        var hash = Request.Headers["verif-hash"].ToString();
+        return await payments.HandleFlutterwaveWebhookAsync(body, hash) ? Ok() : BadRequest();
     }
 
     /// <summary>Paystack's own confirmation message. It is trusted only if the signature matches.</summary>

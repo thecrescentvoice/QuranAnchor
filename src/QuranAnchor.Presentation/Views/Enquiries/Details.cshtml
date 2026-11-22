@@ -58,7 +58,7 @@
                 <input id="trialLink" name="trialLink" value="@Model.TrialMeetingLink" class="form-control" placeholder="https://meet.google.com/..." /></div>
         </div>
         <div class="mt-3"><label class="form-label" for="notes">Notes (only staff see these)</label><textarea id="notes" name="notes" class="form-control" rows="3">@Model.Notes</textarea></div>
-        <div class="form-text mt-2">Setting a tutor and a time emails the parent and the tutor, with the time in each person's own time zone.</div>
+        <div class="form-text mt-2"><a asp-controller="Availability" asp-action="Index" target="_blank">See which tutors are open to new students</a>. Setting a tutor and a time emails the parent and the tutor, with the time in each person's own time zone.</div>
         <button class="btn btn-primary mt-3" type="submit">Save</button>
     </form>
 </section>

@@ -1,0 +1,122 @@
+@model ProgressViewModel
+@{
+    ViewData["Title"] = "Progress";
+    var t = Model.Total;
+    string Pct(double? v) => v is { } x ? Math.Round(x) + "%" : "No data yet";
+    double? R(double? v) => v is { } x ? Math.Round(x) : null;
+    var data = new
+    {
+        labels = Model.Rows.Select(r => r.Label),
+        held = Model.Rows.Select(r => r.Held), absent = Model.Rows.Select(r => r.Absent),
+        excused = Model.Rows.Select(r => r.Excused), other = Model.Rows.Select(r => r.OtherNotHeld),
+        yes = Model.Rows.Select(r => r.GoalYes), partly = Model.Rows.Select(r => r.GoalPartly), no = Model.Rows.Select(r => r.GoalNo),
+        goal = Model.Rows.Select(r => R(r.GoalScore)), tasks = Model.Rows.Select(r => R(r.TaskRate)), onTime = Model.Rows.Select(r => R(r.OnTimeRate))
+    };
+    var anyData = Model.Rows.Any(r => r.HasData);
+}
+<header class="page-head d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div>
+        <h1>Progress: @Model.Student.FullName</h1>
+        <p class="page-sub">@(Model.Student.Tutor is null ? "No tutor yet" : "Tutor: " + Model.Student.Tutor.FullName) · the last @Model.Months months</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap no-print">
+        @foreach (var m in new[] { 3, 6, 12 })
+        {
+            <a class="btn btn-sm @(m == Model.Months ? "btn-primary" : "btn-outline-secondary")" asp-action="Student" asp-route-id="@Model.Student.Id" asp-route-months="@m">@m months</a>
+        }
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer" aria-hidden="true"></i> Print</button>
+    </div>
+</header>
+
+@if (!anyData)
+{
+    <p class="empty-note"><i class="bi bi-bar-chart-line" aria-hidden="true"></i> No classes have been recorded for this period yet. The charts appear after the first classes are held and the tutor writes the feedback.</p>
+}
+else
+{
+    <div class="row g-3 section">
+        <div class="col-6 col-lg-3"><div class="stat"><span class="stat-icon tone-green"><i class="bi bi-calendar-check"></i></span><div><div class="small-label">Attendance</div><div class="stat-value">@Pct(t.Attendance)</div><div class="small muted">@t.Held held, @t.Absent missed</div></div></div></div>
+        <div class="col-6 col-lg-3"><div class="stat"><span class="stat-icon"><i class="bi bi-bullseye"></i></span><div><div class="small-label">Lesson goals reached</div><div class="stat-value">@Pct(t.GoalScore)</div><div class="small muted">@t.GoalYes yes, @t.GoalPartly partly, @t.GoalNo no</div></div></div></div>
+        <div class="col-6 col-lg-3"><div class="stat"><span class="stat-icon tone-amber"><i class="bi bi-mic"></i></span><div><div class="small-label">Daily tasks handed in</div><div class="stat-value">@Pct(t.TaskRate)</div><div class="small muted">@t.TasksSubmitted of @t.TasksGiven</div></div></div></div>
+        <div class="col-6 col-lg-3"><div class="stat"><span class="stat-icon tone-cyan"><i class="bi bi-clock"></i></span><div><div class="small-label">Arrived on time</div><div class="stat-value">@Pct(t.OnTimeRate)</div><div class="small muted">of @t.FeedbackCount classes</div></div></div></div>
+    </div>
+
+    <section class="section">
+        <h2>Classes each month</h2>
+        <div class="panel chart-card"><canvas id="chartAttendance" role="img" aria-label="Bar chart of classes held, missed, excused and not held, for each month"></canvas></div>
+    </section>
+
+    <section class="section">
+        <h2>Were the lesson goals reached?</h2>
+        <div class="panel chart-card"><canvas id="chartGoals" role="img" aria-label="Bar chart of how often the lesson goal was reached, for each month"></canvas></div>
+    </section>
+
+    <section class="section">
+        <h2>The trend, in percent</h2>
+        <div class="panel chart-card"><canvas id="chartTrend" role="img" aria-label="Line chart of goals reached, daily tasks handed in and arriving on time, for each month"></canvas></div>
+        <p class="form-text mt-2">How the goal figure is worked out: "goal achieved" counts as 1 and "partly" as half. A month with no feedback shows a gap, not a zero.</p>
+    </section>
+
+    <section class="section">
+        <h2>The numbers</h2>
+        <div class="table-card table-responsive"><table class="table align-middle text-center">
+            <thead><tr><th class="text-start">Month</th><th>Held</th><th>Missed</th><th>Excused</th><th>Other</th><th>Goals reached</th><th>Tasks handed in</th><th>On time</th></tr></thead>
+            <tbody>
+            @foreach (var r in Model.Rows)
+            {
+                <tr><td class="text-start">@r.Label</td><td>@r.Held</td><td>@r.Absent</td><td>@r.Excused</td><td>@r.OtherNotHeld</td><td>@Pct(r.GoalScore)</td><td>@Pct(r.TaskRate)</td><td>@Pct(r.OnTimeRate)</td></tr>
+            }
+            </tbody>
+            <tfoot><tr class="fw-semibold"><td class="text-start">Total</td><td>@t.Held</td><td>@t.Absent</td><td>@t.Excused</td><td>@t.OtherNotHeld</td><td>@Pct(t.GoalScore)</td><td>@Pct(t.TaskRate)</td><td>@Pct(t.OnTimeRate)</td></tr></tfoot>
+        </table></div>
+        <p class="form-text">Missed means the student did not come without an excuse. Excused means the family told the tutor in advance. Other means the tutor was unavailable, a technical problem, or a break day. Only missed classes lower the attendance figure.</p>
+    </section>
+
+    @if (Model.Recent.Count > 0)
+    {
+        <section class="section">
+            <h2>Recent lessons</h2>
+            <div class="panel"><ul class="list-plain">
+                @foreach (var l in Model.Recent)
+                {
+                    <li><span><strong>@l.Title</strong> <span class="muted">· @l.LocalDate.ToString("d MMM yyyy")</span></span><span class="muted small">@l.Goal · @l.OnTrack</span></li>
+                }
+            </ul></div>
+        </section>
+    }
+}
+
+@section Scripts {
+    @if (anyData)
+    {
+        <script type="application/json" id="progressData">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(data))</script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+        <script>
+            (function () {
+                if (typeof Chart === 'undefined') { return; }   // the table below still shows every number
+                var d = JSON.parse(document.getElementById('progressData').textContent);
+                Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+                var stacked = { responsive: true, maintainAspectRatio: false,
+                    scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } },
+                    plugins: { legend: { position: 'bottom' } } };
+
+                new Chart(document.getElementById('chartAttendance'), { type: 'bar', data: { labels: d.labels, datasets: [
+                    { label: 'Held', data: d.held, backgroundColor: '#5B3FD9' },
+                    { label: 'Missed', data: d.absent, backgroundColor: '#D61F4B' },
+                    { label: 'Excused', data: d.excused, backgroundColor: '#F2B01E' },
+                    { label: 'Other (not held)', data: d.other, backgroundColor: '#9AA7B0' }] }, options: stacked });
+
+                new Chart(document.getElementById('chartGoals'), { type: 'bar', data: { labels: d.labels, datasets: [
+                    { label: 'Goal achieved', data: d.yes, backgroundColor: '#1F9D6B' },
+                    { label: 'Partly', data: d.partly, backgroundColor: '#F2B01E' },
+                    { label: 'Not achieved', data: d.no, backgroundColor: '#D61F4B' }] }, options: stacked });
+
+                new Chart(document.getElementById('chartTrend'), { type: 'line', data: { labels: d.labels, datasets: [
+                    { label: 'Goals reached', data: d.goal, borderColor: '#5B3FD9', backgroundColor: '#5B3FD9', tension: .25, spanGaps: false },
+                    { label: 'Daily tasks handed in', data: d.tasks, borderColor: '#F2B01E', backgroundColor: '#F2B01E', tension: .25, spanGaps: false },
+                    { label: 'Arrived on time', data: d.onTime, borderColor: '#0B8F96', backgroundColor: '#0B8F96', tension: .25, spanGaps: false }] },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100, ticks: { callback: function (v) { return v + '%'; } } } }, plugins: { legend: { position: 'bottom' } } } });
+            })();
+        </script>
+    }
+}

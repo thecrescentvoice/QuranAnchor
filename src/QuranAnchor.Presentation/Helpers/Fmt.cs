@@ -11,6 +11,15 @@ public static class Fmt
     private static readonly Regex UrlPattern = new(@"https?://(?:[^\s<&]|&amp;)+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex VideoPattern = new(@"https?://(?:www\.|m\.)?(?:youtube\.com/(?:watch\?|shorts/|live/)|youtu\.be/)[^\s<>""]+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+    public static string Shifts(QuranAnchor.Domain.Enums.TeachingShift shifts)
+    {
+        var parts = new List<string>();
+        if (shifts.HasFlag(QuranAnchor.Domain.Enums.TeachingShift.Daytime)) parts.Add("Daytime");
+        if (shifts.HasFlag(QuranAnchor.Domain.Enums.TeachingShift.PrimeEvening)) parts.Add("Prime evening");
+        if (shifts.HasFlag(QuranAnchor.Domain.Enums.TeachingShift.NightOverseas)) parts.Add("Night overseas");
+        return parts.Count == 0 ? "None" : string.Join(", ", parts);
+    }
+
     /// <summary>Makes the text safe, then turns web addresses (http or https only) into links that open in a new tab.</summary>
     public static string LinkifyHtml(string? text, bool lineBreaks = false)
     {

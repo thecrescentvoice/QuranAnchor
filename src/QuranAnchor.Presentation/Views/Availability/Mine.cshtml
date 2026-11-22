@@ -2,6 +2,39 @@
 @{ ViewData["Title"] = "My availability"; string zone = ViewBag.Zone; }
 <header class="page-head"><h1>My availability</h1><p class="page-sub">The weekly times you can teach, in @TimeHelper.City(zone) time. The supervisor uses this to place new students.</p></header>
 
+@{
+    var profile = (TutorProfile)ViewBag.Tutor;
+    var shiftCards = new[]
+    {
+        (Value: 1, Title: "Daytime shift", Hours: "8:00 am to 4:00 pm Lagos time", Note: "Good for Nigeria and West Africa, and for Asia and Australia in their evenings."),
+        (Value: 2, Title: "Prime evening shift", Hours: "4:00 pm to 10:00 pm Lagos time", Note: "Good for the UK, Europe and the Middle East after school and work."),
+        (Value: 4, Title: "Night overseas shift", Hours: "10:00 pm to 4:00 am Lagos time", Note: "Good for evening classes in the United States and Canada.")
+    };
+}
+<form asp-action="SaveStatus" method="post" class="panel section">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <div><strong>Open to new students</strong><div class="muted small">Turn this off when your timetable is full. Your shifts stay saved, and your current students are not affected.</div></div>
+        <div class="form-check form-switch fs-5"><input class="form-check-input" type="checkbox" role="switch" id="open" name="open" value="true" checked="@profile.OpenToNewStudents" /><label class="form-check-label" for="open">Open</label></div>
+    </div>
+    <div class="row g-3 mb-3">
+        @foreach (var c in shiftCards)
+        {
+            <div class="col-md-4"><div class="panel h-100">
+                <div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="shift-@c.Value" name="shifts" value="@c.Value" checked="@(((int)profile.Shifts & c.Value) != 0)" /><label class="form-check-label fw-semibold" for="shift-@c.Value">@c.Title</label></div>
+                <div class="small mt-1">@c.Hours</div><div class="muted small">@c.Note</div>
+            </div></div>
+        }
+    </div>
+    <label class="form-label" for="note">Note for your supervisor (optional)</label>
+    <textarea id="note" name="note" class="form-control" rows="2" maxlength="300" placeholder="For example: weekends only, or not before 11 pm">@profile.AvailabilityNote</textarea>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
+        <span class="muted small">@(profile.AvailabilityUpdatedAtUtc is { } u ? $"Saved: {(profile.OpenToNewStudents ? "Open" : "Not open")} · {Fmt.Shifts(profile.Shifts)} · {u:d MMM yyyy, HH:mm} UTC" : "Not saved yet")</span>
+        <button class="btn btn-primary" type="submit">Save</button>
+    </div>
+</form>
+
+<h2 class="h6 text-uppercase muted">Your exact weekly times</h2>
+
 <form asp-action="Add" method="post" class="panel section">
     <div class="rate-row">
         <select name="day" class="form-select" style="max-width:11rem">@foreach (var d in Enum.GetValues<DayOfWeek>()) { <option value="@d">@d</option> }</select>

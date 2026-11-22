@@ -407,3 +407,13 @@ body.app-body { background: #F3F5FA; }
 .star-input label { cursor: pointer; color: #D5DAE5; transition: color .12s; line-height: 1; }
 .star-input label:hover, .star-input label:hover ~ label, .star-input input:checked ~ label { color: #F2B01E; }
 .star-input input:focus-visible + label { outline: 3px solid var(--qa-accent); border-radius: .3rem; }
+
+/* ----- Help page: when printed, show every topic open ----- */
+@media print {
+    .accordion-collapse { display: block !important; height: auto !important; }
+    .accordion-button::after { display: none; }
+}
+
+/* ----- Progress charts ----- */
+.chart-card { position: relative; height: 300px; }
+@media print { .chart-card { height: 260px; break-inside: avoid; } }

@@ -8,6 +8,37 @@
 }
 <header class="page-head"><h1>Tutor availability</h1><p class="page-sub">Find a tutor who is free, before you assign a new student.</p></header>
 
+@{
+    var openTutors = (List<TutorProfile>)ViewBag.OpenTutors;
+    var studentCounts = (Dictionary<Guid, int>)ViewBag.StudentCounts;
+    int shiftFilter = ViewBag.Shift;
+}
+<section class="section">
+    <h2>Open to new students</h2>
+    <div class="d-flex flex-wrap gap-2 mb-2">
+        @foreach (var (value, label) in new[] { (0, "All shifts"), (1, "Daytime"), (2, "Prime evening"), (4, "Night overseas") })
+        {
+            <a class="btn btn-sm @(shiftFilter == value ? "btn-primary" : "btn-outline-secondary")" asp-route-shift="@value">@label</a>
+        }
+    </div>
+    @if (openTutors.Count == 0) { <p class="empty-note"><i class="bi bi-person-plus" aria-hidden="true"></i> No tutor has said they are open for that shift.</p> }
+    else
+    {
+        <div class="table-card table-responsive"><table class="table align-middle">
+            <thead><tr><th>Tutor</th><th>Shifts</th><th class="text-end">Current students</th><th>Note</th><th>Updated</th></tr></thead>
+            <tbody>
+            @foreach (var t in openTutors)
+            {
+                <tr><td><a asp-controller="Tutors" asp-action="Details" asp-route-id="@t.Id">@t.FullName</a></td><td>@Fmt.Shifts(t.Shifts)</td>
+                    <td class="text-end">@(studentCounts.TryGetValue(t.Id, out var n) ? n : 0)</td><td class="muted">@t.AvailabilityNote</td>
+                    <td class="text-nowrap muted small">@(t.AvailabilityUpdatedAtUtc?.ToString("d MMM yyyy"))</td></tr>
+            }
+            </tbody>
+        </table></div>
+    }
+    <p class="form-text">Shifts are in Lagos time. Daytime is 8 am to 4 pm, prime evening is 4 pm to 10 pm, and night overseas is 10 pm to 4 am.</p>
+</section>
+
 <section class="section">
     <h2>Who is free?</h2>
     <form method="get" class="panel">

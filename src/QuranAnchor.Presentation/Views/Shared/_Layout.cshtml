@@ -37,6 +37,7 @@ else
             <nav class="sidebar-nav">
                 <div class="nav-group">
                     <a class="nav-item @Active("Home")" asp-controller="Home" asp-action="Index"><i class="bi bi-grid-1x2"></i><span>Dashboard</span></a>
+                    <a class="nav-item @Active("Help")" asp-controller="Help" asp-action="Index"><i class="bi bi-question-circle"></i><span>How to use</span></a>
                 </div>
 
                 @if (role == Roles.Student)
@@ -45,6 +46,7 @@ else
                         <a class="nav-item @Active("Sessions")" asp-controller="Sessions" asp-action="Index"><i class="bi bi-calendar3"></i><span>Classes</span></a>
                         <a class="nav-item @Active("Plans")" asp-controller="Plans" asp-action="Index"><i class="bi bi-journal-text"></i><span>Monthly plans</span></a>
                         <a class="nav-item @Active("Reports")" asp-controller="Reports" asp-action="Mine"><i class="bi bi-graph-up-arrow"></i><span>Reports</span></a>
+                        <a class="nav-item @Active("Progress")" asp-controller="Progress" asp-action="Mine"><i class="bi bi-bar-chart-line"></i><span>Progress</span></a>
                         <a class="nav-item @Active("Certificates")" asp-controller="Certificates" asp-action="Index"><i class="bi bi-award"></i><span>Certificates</span></a>
                     </div>
                     <div class="nav-group"><h6>Account</h6>
@@ -64,6 +66,7 @@ else
                     </div>
                     <div class="nav-group"><h6>Me</h6>
                         <a class="nav-item @Active("Meetings")" asp-controller="Meetings" asp-action="Index"><i class="bi bi-camera-video"></i><span>Meetings</span></a>
+                        <a class="nav-item @Active("Performance")" asp-controller="Performance" asp-action="Mine"><i class="bi bi-speedometer2"></i><span>My performance</span></a>
                         <a class="nav-item @Active("Availability")" asp-controller="Availability" asp-action="Mine"><i class="bi bi-clock"></i><span>My availability</span></a>
                         <a class="nav-item @Active("Earnings")" asp-controller="Earnings" asp-action="Mine"><i class="bi bi-cash-coin"></i><span>Earnings</span></a>
                         <a class="nav-item @Active("Announcements")" asp-controller="Announcements" asp-action="Index"><i class="bi bi-megaphone"></i><span>Announcements</span></a>

@@ -45,6 +45,11 @@ public class TutorProfile
     public AccountStatus Status { get; set; } = AccountStatus.Active;
     /// <summary>The supervisor (a staff user) responsible for this tutor.</summary>
     public Guid? SupervisorId { get; set; }
+    /// <summary>True when the tutor can take new students. The shifts stay saved when this is turned off.</summary>
+    public bool OpenToNewStudents { get; set; }
+    public TeachingShift Shifts { get; set; } = TeachingShift.None;
+    public string AvailabilityNote { get; set; } = string.Empty;
+    public DateTime? AvailabilityUpdatedAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 

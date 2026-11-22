@@ -50,6 +50,7 @@ public class QuranAnchorDbContext(DbContextOptions<QuranAnchorDbContext> options
         base.OnModelCreating(builder);
 
         // A supervisor only sees their own tutors and students, and the records that belong to them.
+        builder.Entity<TutorProfile>().Property(x => x.AvailabilityNote).HasMaxLength(300);
         builder.Entity<StudentProfile>().HasQueryFilter(x => ScopeSupervisorId == null || x.SupervisorId == ScopeSupervisorId);
         builder.Entity<TutorProfile>().HasQueryFilter(x => ScopeSupervisorId == null || x.SupervisorId == ScopeSupervisorId);
         builder.Entity<ClassSchedule>().HasQueryFilter(x => ScopeSupervisorId == null || x.Student!.SupervisorId == ScopeSupervisorId);

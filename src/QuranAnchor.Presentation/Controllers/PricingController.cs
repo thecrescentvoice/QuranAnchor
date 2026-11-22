@@ -32,7 +32,7 @@ public class PricingController(QuranAnchorDbContext db, IAuditLogger audit) : Co
 
         return View(new PricingViewModel
         {
-            Prices = prices.OrderBy(p => Array.IndexOf(Currencies, p.Currency)).ToList(),
+            Prices = prices.OrderBy(p => { var i = Array.IndexOf(Currencies, p.Currency); return i < 0 ? 99 : i; }).ThenBy(p => p.Currency).ToList(),
             Rates = await db.SessionRates.AsNoTracking().OrderBy(r => r.DurationMinutes).ToListAsync()
         });
     }
@@ -52,6 +52,42 @@ public class PricingController(QuranAnchorDbContext db, IAuditLogger audit) : Co
         await db.SaveChangesAsync();
         await audit.LogAsync("PortalPricesChanged", "Pricing", string.Join("; ", changes));
         TempData["Saved"] = "Prices saved. They apply to new payments.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    /// <summary>Adds any currency (a three-letter code such as EUR, CAD or AED) with its monthly portal fee.</summary>
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddCurrency(string code, string amount)
+    {
+        code = (code ?? string.Empty).Trim().ToUpperInvariant();
+        if (code.Length != 3 || !code.All(c => c is >= 'A' and <= 'Z') || !TryAmount(amount, out var value) || value <= 0)
+        {
+            TempData["Warning"] = "Enter a three-letter currency code, such as EUR, and an amount greater than zero.";
+            return RedirectToAction(nameof(Index));
+        }
+        if (await db.PortalPrices.AnyAsync(p => p.Currency == code))
+        {
+            TempData["Warning"] = $"{code} is already in the list. Change its amount above instead.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        db.PortalPrices.Add(new PortalPrice { Currency = code, Amount = value, IsActive = true });
+        await db.SaveChangesAsync();
+        await audit.LogAsync("PortalCurrencyAdded", code, value.ToString("0.00", CultureInfo.InvariantCulture));
+        TempData["Saved"] = $"{code} added. Parents can now pay in it, if Flutterwave supports it.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemoveCurrency(string code)
+    {
+        if (Currencies.Contains(code)) return RedirectToAction(nameof(Index));
+        var row = await db.PortalPrices.FirstOrDefaultAsync(p => p.Currency == code);
+        if (row is null) return RedirectToAction(nameof(Index));
+        db.PortalPrices.Remove(row);
+        await db.SaveChangesAsync();
+        await audit.LogAsync("PortalCurrencyRemoved", code);
+        TempData["Saved"] = $"{code} removed.";
         return RedirectToAction(nameof(Index));
     }
 

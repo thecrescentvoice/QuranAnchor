@@ -1,0 +1,200 @@
+@inject QuranAnchor.Presentation.Services.CurrentUser Me
+@{
+    ViewData["Title"] = "How to use the portal";
+    var brand = (QuranAnchor.Application.Models.BrandingSettings)ViewBag.Brand;
+    var whatsapp = new string((brand.SupervisorWhatsApp ?? "").Where(char.IsDigit).ToArray());
+    var sections = new List<(string Title, string[] Steps)>();
+
+    if (Me.IsStudent)
+    {
+        sections.Add(("Sign in", new[] {
+            "Open the portal's address and enter your Student ID (it is in the message you were sent) or your email, and your password.",
+            "The first time, you choose a new password and accept the privacy notice.",
+            "Forgot your password? Press 'Forgot your password?' on the sign-in page. A link is emailed to the parent's email address." }));
+        sections.Add(("Join a class", new[] {
+            "Open the Dashboard. Your next class is at the top, with the time shown in your own time zone.",
+            "Press the Join button. It opens the class in Google Meet.",
+            "The Join button always works, even if the portal fee is overdue." }));
+        sections.Add(("Read your child's monthly plan", new[] {
+            "Open Monthly plans in the menu.",
+            "Choose the month. A plan appears once the tutor has published it.",
+            "Press Download PDF to save or print it." }));
+        sections.Add(("Reports and certificates", new[] {
+            "Open Reports for the monthly progress report, and Certificates for any certificate your child has earned.",
+            "Each one can be downloaded as a PDF." }));
+        sections.Add(("See your child's progress", new[] {
+            "Open Progress in the menu.",
+            "The charts show, month by month, how many classes were held or missed, how often the lesson goal was reached, and how many daily tasks were handed in.",
+            "Use the 3, 6 or 12 month buttons to look further back, and Print to keep a copy." }));
+        sections.Add(("Pay the portal fee", new[] {
+            "Open Portal fee.",
+            "Choose the currency (naira, dollars or pounds) and press Pay now.",
+            "You are taken to the payment provider's secure page. Pay with your card there.",
+            "You come back to the portal, and the page shows Paid with the date it is paid until. Your receipt is listed under Receipts." }));
+        sections.Add(("Class fees and invoices", new[] {
+            "Open Class fees to see your invoices, what has been paid and what is left.",
+            "The payment instructions are shown on each invoice. Send the proof of payment to the supervisor." }));
+        sections.Add(("Ask to move a class", new[] {
+            "Open Classes and choose the class.",
+            "Ask for a new time. It changes only when the tutor accepts it.",
+            "If the tutor asks you for a new time, the request appears on your Dashboard for you to accept or decline." }));
+        sections.Add(("Rate your tutor", new[] {
+            "Once a month, open Rate my tutor, choose from 1 to 5 stars and add a comment if you like.",
+            "Your comment is seen only by the supervisor and the admins. Your tutor sees just an average score, never who gave it." }));
+        if (whatsapp.Length > 0)
+        {
+            sections.Add(("Report a problem", new[] {
+                "On the Dashboard, under Report an issue, press the kind of problem you have.",
+                "WhatsApp opens with a message already written to the supervisor. You can edit it before you send it." }));
+        }
+    }
+    else if (Me.IsTutor)
+    {
+        sections.Add(("Sign in", new[] {
+            "Use the email and the temporary password you were given. The first time, you choose a new password and accept the privacy notice.",
+            "Forgot your password? Press 'Forgot your password?' on the sign-in page." }));
+        sections.Add(("Before a class", new[] {
+            "Open the Dashboard to see today's classes, in your own time zone.",
+            "Press Join to enter the student's class link." }));
+        sections.Add(("If the student does not arrive", new[] {
+            "Wait for the waiting time (10 minutes unless the Academy has changed it).",
+            "Open the class and record that the student did not attend.",
+            "The parent is emailed automatically. A class that did not hold is not paid." }));
+        sections.Add(("After every class: write the feedback", new[] {
+            "Open the class from Classes and press the feedback button.",
+            "Fill in the form. The learning objective is already filled in from this week of the monthly plan.",
+            "Save it. Then use the copy button to paste the feedback into the parent's WhatsApp group." }));
+        sections.Add(("Fill the monthly plans", new[] {
+            "Open Monthly plans. You see one row for each of your students.",
+            "For each week, choose a goal for Hifz, Qira'ah, Murāja'ah and Tajweed from the dropdown, or type your own. 'Not Applicable' means nothing is set.",
+            "Use 'Copy from last month' to start from last month's goals.",
+            "Press 'Save as drafts' while you work. Press 'Save and publish for parents' when the plans are ready.",
+            "Press 'Download all PDFs' to get one PDF for each student in a single file." }));
+        sections.Add(("Ask for a new time for a class", new[] {
+            "Open the class and propose a new time. Agree it with the parent first.",
+            "The class moves only when the other side accepts it." }));
+        sections.Add(("If you cannot teach a class", new[] {
+            "Open the class and mark it as not held, with the reason.",
+            "It does not use one of the student's sessions, and your supervisor is told." }));
+        sections.Add(("Your weekly availability", new[] {
+            "Open My availability, choose a day and the times you can teach, and press Add.",
+            "Supervisors use this to place new students with you." }));
+        sections.Add(("Tell supervisors when you can take new students", new[] {
+            "Open My availability. At the top, turn on Open to new students.",
+            "Choose the shifts you can teach: daytime, prime evening or night overseas. The times are in Lagos time.",
+            "Add a note if you like, and press Save. Turn the switch off when your timetable is full. Your current students are never affected." }));
+        sections.Add(("Your earnings", new[] {
+            "Open Earnings to see what each class earned this month.",
+            "A class that did not hold earns nothing. The count starts again at the start of each month." }));
+        sections.Add(("My performance", new[] {
+            "Open My performance to see your classes held, hours taught, how much of your feedback is written, and how much is written within a day of the class.",
+            "The parents' rating is shown as an average only, with no comments and no names.",
+            "If classes are waiting for feedback, they are listed at the top. Writing them raises your numbers." }));
+        sections.Add(("Meetings", new[] {
+            "Open Meetings to see the meetings you are invited to. The time is shown in your own time zone.",
+            "Press Join, or 'Add to my calendar' to put it on your phone." }));
+        sections.Add(("Certificates", new[] {
+            "Open Certificates, choose the student and the achievement, and issue it.",
+            "The parent can then see it and download it as a PDF." }));
+        sections.Add(("Progress charts for a student", new[] {
+            "Open My students, choose a student, and press Progress charts.",
+            "Use them to see where a child is improving and where more support is needed. They are built from your attendance records and feedback, so complete feedback after every class." }));
+    }
+    else
+    {
+        sections.Add(("Create a tutor or a student account", new[] {
+            "Open Tutors and press New tutor, or open Students and press New student.",
+            "Fill in the details. A temporary password is shown once. Give it to the tutor or the parent.",
+            "They choose a new password the first time they sign in.",
+            "When you create a student, add the weekly days and times. The portal checks that the tutor is not already busy." }));
+        sections.Add(("Change or replace a tutor", new[] {
+            "To move one student, open the student and press Change tutor. Their weekly times and upcoming classes move too.",
+            "To replace a tutor who is leaving, open the tutor and press Replace tutor. All their students move to the new tutor.",
+            "Afterwards, replace the student's Meet link so the previous tutor can no longer join." }));
+        sections.Add(("Breaks, holidays and pauses", new[] {
+            "Set holidays once under Break days. Classes on those days are skipped for everyone.",
+            "To stop classes for one student for a while, open the student and pause them. Resume them when they come back." }));
+        sections.Add(("Trial class enquiries", new[] {
+            "Open Enquiries. A new enquiry is visible to every supervisor until one presses 'Take this enquiry'.",
+            "Choose a tutor and a time for the trial class. The parent and the tutor are emailed, each in their own time zone.",
+            "When the family agrees, press 'Make this a student'." }));
+        sections.Add(("Find a tutor for a new family", new[] {
+            "Open Tutor availability. The top table lists tutors who are open to new students, with their shifts and how many students they have now.",
+            "Use the shift buttons to narrow the list. Shifts are in Lagos time.",
+            "Then use Who is free to check an exact time before you assign the student." }));
+        sections.Add(("Supervisors and hand over", new[] {
+            "A supervisor sees only their own tutors and students.",
+            "To give a tutor (with all their students), a student who has no tutor, or an enquiry to another supervisor, open it and use Hand over.",
+            "Admins can open Supervisors to see who looks after whom, and to move everyone from one supervisor to another." }));
+        sections.Add(("Plans, feedback and reports", new[] {
+            "Under Monthly plans you see the plans of your tutors and can download them all.",
+            "Classes that have no feedback are listed on your Dashboard, and you are emailed about them.",
+            "Reports are made each month. Add your remarks before they are shared with parents." }));
+        sections.Add(("Progress charts", new[] {
+            "Open a student and press Progress charts to see attendance, goals reached and daily tasks, month by month.",
+            "Parents see the same charts under Progress in their menu." }));
+        sections.Add(("Money", new[] {
+            "Payments lists the portal fee payments. Class fees holds invoices and balances, and lets you record payments received.",
+            "Tutor summary shows what each tutor earned this month.",
+            "Excel exports downloads students, payments, classes, tutor summaries and invoices." }));
+        sections.Add(("Announcements and tutor meetings", new[] {
+            "Under Announcements you can post a notice, add a flyer, and edit or delete it later.",
+            "Under Tutor meetings you create a meeting for all your tutors or for chosen ones. They are emailed and reminded a day and an hour before." }));
+        if (Me.Role == Roles.SuperAdmin)
+        {
+            sections.Add(("Rules and branding", new[] {
+                "The Rules page sets the waiting time, the fee grace period, the plan dropdown lists and the closing note on the plan PDF.",
+                "The Branding page sets the Academy's name, logo, colours and the class fee payment instructions." }));
+        }
+    }
+}
+
+<header class="page-head d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div><h1>How to use the portal</h1><p class="page-sub">Short steps for the things you do most. Choose a topic, or search.</p></div>
+    <button type="button" class="btn btn-outline-secondary btn-sm no-print" onclick="window.print()"><i class="bi bi-printer" aria-hidden="true"></i> Print</button>
+</header>
+
+<div class="mb-3 no-print" style="max-width:28rem">
+    <label class="visually-hidden" for="helpSearch">Search the help</label>
+    <input id="helpSearch" class="form-control" type="search" placeholder="Search, for example 'plan' or 'fee'" autocomplete="off" />
+</div>
+
+<div class="accordion" id="helpAccordion">
+    @for (var i = 0; i < sections.Count; i++)
+    {
+        var s = sections[i];
+        <div class="accordion-item help-item">
+            <h2 class="accordion-header"><button class="accordion-button @(i == 0 ? "" : "collapsed")" type="button" data-bs-toggle="collapse" data-bs-target="#help-@i" aria-expanded="@(i == 0 ? "true" : "false")" aria-controls="help-@i">@s.Title</button></h2>
+            <div id="help-@i" class="accordion-collapse collapse @(i == 0 ? "show" : "")">
+                <div class="accordion-body"><ol class="mb-0">@foreach (var step in s.Steps) { <li>@step</li> }</ol></div>
+            </div>
+        </div>
+    }
+</div>
+<p id="helpNone" class="muted mt-3" style="display:none">Nothing matches your search.</p>
+
+<section class="section no-print">
+    <h2>Still stuck?</h2>
+    <div class="panel d-flex flex-wrap align-items-center gap-3">
+        <span class="muted">@(Me.IsStudent ? "Ask the supervisor." : Me.IsTutor ? "Ask your supervisor." : "Check the Audit log or ask the person who set up the portal.")</span>
+        @if (whatsapp.Length > 0 && !Me.IsStaff)
+        {
+            <a class="btn btn-outline-secondary" href="https://wa.me/@whatsapp?text=@Uri.EscapeDataString("Assalamu alaykum, I need help with the portal.")" target="_blank" rel="noopener"><i class="bi bi-whatsapp" aria-hidden="true"></i> Message on WhatsApp</a>
+        }
+    </div>
+</section>
+
+@section Scripts {
+    <script>
+        document.getElementById('helpSearch').addEventListener('input', function () {
+            var q = this.value.trim().toLowerCase(), shown = 0;
+            document.querySelectorAll('.help-item').forEach(function (item) {
+                var match = q === '' || item.textContent.toLowerCase().indexOf(q) !== -1;
+                item.style.display = match ? '' : 'none';
+                if (match) { shown++; }
+                if (q !== '' && match) { item.querySelector('.accordion-collapse').classList.add('show'); }
+            });
+            document.getElementById('helpNone').style.display = shown === 0 ? '' : 'none';
+        });
+    </script>
+}

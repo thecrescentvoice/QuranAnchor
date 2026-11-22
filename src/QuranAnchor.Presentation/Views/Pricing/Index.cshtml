@@ -14,8 +14,22 @@
             </div>
         }
         <button class="btn btn-primary mt-2" type="submit">Save prices</button>
-        <div class="form-text">Check that USD and GBP collection is switched on in your Paystack account.</div>
+        <div class="form-text">Naira is paid through Paystack. Every other currency is paid through Flutterwave, once Flutterwave is set up. Tick Offered to show a currency to parents.</div>
     </form>
+
+    <div class="panel mt-3">
+        <h3 class="h6">Add another currency</h3>
+        <form asp-action="AddCurrency" method="post" class="rate-row">
+            <input name="code" class="form-control" style="max-width:8rem;text-transform:uppercase" maxlength="3" placeholder="EUR" required />
+            <input type="number" step="0.01" min="0.01" name="amount" class="form-control" style="max-width:10rem" placeholder="Monthly fee" required />
+            <button class="btn btn-outline-secondary" type="submit">Add currency</button>
+        </form>
+        <div class="form-text">Use the three-letter code, for example EUR, CAD, AED or SAR. Set the monthly fee in that currency yourself. Flutterwave must support the currency.</div>
+        @foreach (var extra in Model.Prices.Where(p => p.Currency is not ("NGN" or "USD" or "GBP")))
+        {
+            <form asp-action="RemoveCurrency" method="post" class="d-inline-block me-2 mt-2" onsubmit="return confirm('Remove this currency?');"><input type="hidden" name="code" value="@extra.Currency" /><button class="btn btn-outline-danger btn-sm">Remove @extra.Currency</button></form>
+        }
+    </div>
 </section>
 
 <section class="section">

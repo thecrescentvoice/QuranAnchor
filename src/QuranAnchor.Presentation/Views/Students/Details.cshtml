@@ -41,6 +41,7 @@
     }
 
     <div class="d-flex flex-wrap gap-2 section no-print">
+        <a class="btn btn-outline-secondary" asp-controller="Progress" asp-action="Student" asp-route-id="@Model.Student.Id"><i class="bi bi-bar-chart-line" aria-hidden="true"></i> Progress charts</a>
         @if (Me.Can(Permissions.ReplaceTutor)) { <a class="btn btn-outline-secondary" asp-action="ChangeTutor" asp-route-id="@Model.Student.Id"><i class="bi bi-arrow-left-right" aria-hidden="true"></i> Change tutor</a> }
         @if (Me.Can(Permissions.EditAccounts)) { <a class="btn btn-outline-secondary" asp-action="Edit" asp-route-id="@s.Id">Edit</a> }
         @if (s.Status == AccountStatus.Deactivated)

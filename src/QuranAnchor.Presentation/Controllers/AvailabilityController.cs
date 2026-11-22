@@ -28,7 +28,37 @@ public class AvailabilityController(
         var tutor = await me.TutorAsync();
         if (tutor is null) return Forbid();
         ViewBag.Zone = tutor.TimeZoneId;
+        ViewBag.Tutor = tutor;
         return View(await db.Availability.AsNoTracking().Where(a => a.TutorId == tutor.Id).OrderBy(a => a.DayOfWeek).ThenBy(a => a.StartTime).ToListAsync());
+    }
+
+    /// <summary>The tutor says whether they can take new students, and in which shifts.</summary>
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveStatus(bool open, int[]? shifts, string? note)
+    {
+        var current = await me.TutorAsync();
+        if (current is null) return Forbid();
+        var tutor = await db.Tutors.FirstAsync(t => t.Id == current.Id);
+
+        var all = TeachingShift.Daytime | TeachingShift.PrimeEvening | TeachingShift.NightOverseas;
+        var flags = TeachingShift.None;
+        foreach (var s in shifts ?? Array.Empty<int>()) flags |= (TeachingShift)s & all;
+
+        if (open && flags == TeachingShift.None)
+        {
+            TempData["Warning"] = "Choose at least one shift, or turn off Open to new students.";
+            return RedirectToAction(nameof(Mine));
+        }
+
+        tutor.OpenToNewStudents = open;
+        tutor.Shifts = flags;
+        tutor.AvailabilityNote = (note ?? "").Trim();
+        tutor.AvailabilityUpdatedAtUtc = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        await audit.LogAsync("OpenToNewStudentsChanged", tutor.TutorCode, open ? $"open: {flags}" : "closed");
+
+        TempData["Saved"] = open ? "Saved. Supervisors can now see that you can take new students." : "Saved. You are not open to new students.";
+        return RedirectToAction(nameof(Mine));
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -67,13 +97,17 @@ public class AvailabilityController(
     // ---------- Staff: everyone's windows, and "who is free?" ----------
 
     [Authorize(Policy = Permissions.ManageSchedules)]
-    public async Task<IActionResult> Index(DayOfWeek? day, TimeOnly? time, int duration = 30, string zone = "Africa/Lagos")
+    public async Task<IActionResult> Index(DayOfWeek? day, TimeOnly? time, int duration = 30, string zone = "Africa/Lagos", int shift = 0)
     {
         duration = Math.Clamp(duration, 15, 120);
         var tutors = await db.Tutors.AsNoTracking().Where(t => t.Status == AccountStatus.Active).OrderBy(t => t.FullName).ToListAsync();
         var windows = await db.Availability.AsNoTracking().ToListAsync();
         ViewBag.Windows = windows.GroupBy(w => w.TutorId).ToDictionary(g => g.Key, g => g.OrderBy(w => w.DayOfWeek).ThenBy(w => w.StartTime).ToList());
         ViewBag.Tutors = tutors;
+        ViewBag.Shift = shift;
+        ViewBag.OpenTutors = tutors.Where(t => t.OpenToNewStudents && (shift == 0 || ((int)t.Shifts & shift) != 0)).ToList();
+        ViewBag.StudentCounts = await db.Students.AsNoTracking().Where(s => s.Status == AccountStatus.Active && s.TutorId != null)
+            .GroupBy(s => s.TutorId!.Value).Select(g => new { g.Key, N = g.Count() }).ToDictionaryAsync(x => x.Key, x => x.N);
         ViewBag.Zones = TimeHelper.CommonZones.Select(z => new SelectListItem(z.Replace('_', ' '), z, z == zone)).ToList();
         ViewBag.Day = day; ViewBag.Time = time; ViewBag.Duration = duration; ViewBag.Zone = zone;
 

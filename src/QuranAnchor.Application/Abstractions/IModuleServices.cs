@@ -55,9 +55,11 @@ public interface IPdfService
 
 public interface IPaymentService
 {
-    Task<(bool Ok, string? Url, string? Error)> StartCheckoutAsync(Guid studentId, string currency, string callbackUrl, CancellationToken ct = default);
+    Task<(bool Ok, string? Url, string? Error)> StartCheckoutAsync(Guid studentId, string currency, string callbackUrl, string? flutterwaveCallbackUrl = null, CancellationToken ct = default);
     Task<(bool Ok, string Message)> VerifyAsync(string reference, CancellationToken ct = default);
     Task<bool> HandleWebhookAsync(string body, string signature, CancellationToken ct = default);
+    Task<(bool Ok, string Message)> VerifyFlutterwaveAsync(string txRef, string? transactionId, CancellationToken ct = default);
+    Task<bool> HandleFlutterwaveWebhookAsync(string body, string verifHash, CancellationToken ct = default);
     Task MarkManualAsync(Guid studentId, string note, CancellationToken ct = default);
 }
 
